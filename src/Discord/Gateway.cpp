@@ -206,6 +206,8 @@ void Gateway::handleHello(const Inbound &data)
 
 void Gateway::identify()
 {
+    launchSignature = generateLaunchSignature();
+
     ClientProperties properties;
     properties.os = "Windows";
     properties.browser = "Firefox";
@@ -224,7 +226,7 @@ void Gateway::identify()
     properties.clientBuildNumber = 482285;
     properties.clientEventSource = nullptr;
     properties.clientLaunchId = "698dbe61-0641-4cbc-a913-b678c789ef47";
-    properties.launchSignature = "0a5ba760-4050-4552-9018-76211e6176db";
+    properties.launchSignature = launchSignature;
     properties.clientAppState = "unfocused";
 
     UpdatePresence presence;
@@ -243,6 +245,23 @@ void Gateway::identify()
     identify.clientState = clientState;
 
     sendPayload(identify.toJson());
+}
+
+QString Gateway::generateLaunchSignature()
+{
+    QUuid uuid = QUuid::createUuid();
+    QByteArray bytes = uuid.toRfc4122();
+
+    static constexpr quint8 mask[16] = {
+        0xff, 0x7f, 0xef, 0xef, 0xf7, 0xef, 0xf7, 0xff,
+        0xdf, 0x7e, 0xff, 0xbf, 0xfe, 0xff, 0xf7, 0xff,
+    };
+
+    for (int i = 0; i < 16; i++)
+        bytes[i] = static_cast<char>(static_cast<quint8>(bytes[i]) & static_cast<quint8>(mask[i]));
+
+    QUuid signature = QUuid::fromRfc4122(bytes);
+    return signature.toString(QUuid::WithoutBraces);
 }
 
 static int curlDebug(CURL *, curl_infotype type, char *data, size_t size, void *)

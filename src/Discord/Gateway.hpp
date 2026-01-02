@@ -49,6 +49,8 @@ private:
     void handleHello(const Inbound &data);
     void identify();
 
+    QString generateLaunchSignature();
+
     void networkLoop();
     void heartbeatLoop();
 
@@ -66,6 +68,8 @@ private:
     std::thread networkThread;
     std::chrono::steady_clock::time_point closeTime;
     static constexpr std::chrono::milliseconds closeTimeout = std::chrono::milliseconds(1000);
+
+    QString launchSignature;
 
     std::atomic<int> lastReceivedSequence = 0;
 
