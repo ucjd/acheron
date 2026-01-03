@@ -123,6 +123,35 @@ QRectF charRectInDocument(const QTextDocument &doc, int charIndex)
     return QRectF(x1, y, x2 - x1, line.height());
 }
 
+QString getLinkAt(const QAbstractItemView *view, const QModelIndex &index, const QPoint &mousePos)
+{
+    if (!index.isValid() || !view)
+        return {};
+
+    QString html = index.data(ChatModel::HtmlRole).toString();
+    if (html.isEmpty())
+        return {};
+
+    QRect rowRect = view->visualRect(index);
+
+    bool showHeader = index.data(ChatModel::ShowHeaderRole).toBool();
+    bool hasSeparator = index.data(ChatModel::DateSeparatorRole).toBool();
+    QFont font = view->font();
+    QFontMetrics fm(font);
+
+    QRect textRect = textRectForRow(rowRect, showHeader, fm, hasSeparator);
+
+    if (!textRect.contains(mousePos))
+        return {};
+
+    QTextDocument doc;
+    setupDocument(doc, html, font, textRect.width());
+
+    QPointF localPos = mousePos - textRect.topLeft();
+
+    return doc.documentLayout()->anchorAt(localPos);
+}
+
 } // namespace ChatLayout
 } // namespace UI
 } // namespace Acheron

@@ -1,5 +1,7 @@
 #include "ChatView.hpp"
 
+#include "UI/Dialogs/ConfirmPopup.hpp"
+
 namespace Acheron {
 namespace UI {
 ChatView::ChatView(QWidget *parent) : QListView(parent), hoveredRow(-1), hoveredChar(-1)
@@ -68,7 +70,6 @@ void ChatView::mouseMoveEvent(QMouseEvent *event)
     QModelIndex idx = indexAt(pos);
 
     if (event->buttons() & Qt::LeftButton && selectionAnchor.isValid()) {
-
         int currentRow = idx.isValid() ? idx.row() : (model()->rowCount() - 1);
         if (currentRow < 0)
             return;
@@ -109,12 +110,17 @@ void ChatView::mouseMoveEvent(QMouseEvent *event)
 
     int charPos = ChatLayout::hitTestCharIndex(this, idx, pos);
 
-    if (charPos >= 0) {
-        if (viewport()->cursor().shape() != Qt::IBeamCursor)
-            viewport()->setCursor(Qt::IBeamCursor);
+    QString link = ChatLayout::getLinkAt(this, idx, pos);
+    if (!link.isEmpty()) {
+        viewport()->setCursor(Qt::PointingHandCursor);
     } else {
-        if (viewport()->cursor().shape() != Qt::ArrowCursor)
-            viewport()->setCursor(Qt::ArrowCursor);
+        if (charPos >= 0) {
+            if (viewport()->cursor().shape() != Qt::IBeamCursor)
+                viewport()->setCursor(Qt::IBeamCursor);
+        } else {
+            if (viewport()->cursor().shape() != Qt::ArrowCursor)
+                viewport()->setCursor(Qt::ArrowCursor);
+        }
     }
 
     if (hoveredRow != idx.row() || hoveredChar != charPos) {
@@ -131,6 +137,23 @@ void ChatView::mouseMoveEvent(QMouseEvent *event)
 
 void ChatView::mouseReleaseEvent(QMouseEvent *event)
 {
+    if (event->button() == Qt::LeftButton) {
+        QPoint pos = event->pos();
+        QModelIndex idx = indexAt(pos);
+
+        QString link = ChatLayout::getLinkAt(this, idx, pos);
+
+        if (!link.isEmpty()) {
+            ConfirmPopup dialog("External Link",
+                                QString("Are you sure you want to open <b>%1</b>?").arg(link),
+                                "Open Link", this);
+
+            if (dialog.exec() == QDialog::Accepted) {
+                QDesktopServices::openUrl(QUrl(link));
+            }
+        }
+    }
+
     QListView::mouseReleaseEvent(event);
 }
 

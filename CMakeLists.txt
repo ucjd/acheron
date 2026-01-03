@@ -45,6 +45,8 @@ set(PROJECT_SOURCES
     src/UI/Chat/ChatView.cpp
     src/UI/Chat/ChatLayout.cpp
     src/UI/Dialogs/AddAccountDialog.cpp
+    src/UI/Dialogs/BasePopup.cpp
+    src/UI/Dialogs/ConfirmPopup.cpp
     src/UI/Input/MessageInput.cpp
     src/Storage/DatabaseManager.cpp
     src/Storage/BaseRepository.cpp

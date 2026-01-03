@@ -36,6 +36,7 @@ void setupDocument(QTextDocument &doc, const QString &htmlContent, const QFont &
                    int textWidth);
 int hitTestCharIndex(QAbstractItemView *view, const QModelIndex &index, const QPoint &viewportPos);
 QRectF charRectInDocument(const QTextDocument &doc, int charIndex);
+QString getLinkAt(const QAbstractItemView *view, const QModelIndex &index, const QPoint &mousePos);
 
 } // namespace ChatLayout
 } // namespace UI
