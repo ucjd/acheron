@@ -77,7 +77,7 @@ private:
 
     QNetworkAccessManager *netManager;
     QString baseUrl;
-    QString m_token;
+    QString token;
 
     HttpClient *httpClient;
     Gateway *gateway;

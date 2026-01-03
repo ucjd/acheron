@@ -10,7 +10,7 @@ namespace Discord {
 
 Client::Client(const QString &token, const QString &gatewayUrl, const QString &baseUrl,
                QObject *parent)
-    : QObject(parent), m_token(token), baseUrl(baseUrl)
+    : QObject(parent), token(token), baseUrl(baseUrl)
 {
     netManager = new QNetworkAccessManager(this);
 
@@ -153,8 +153,8 @@ void Client::sendRequest(const QString &endpoint, const QUrlQuery &query,
     url.setQuery(query);
     QNetworkRequest request(url);
 
-    if (!m_token.isEmpty()) {
-        request.setRawHeader("Authorization", m_token.toUtf8());
+    if (!token.isEmpty()) {
+        request.setRawHeader("Authorization", token.toUtf8());
     }
 
     QNetworkReply *reply = netManager->get(request);
