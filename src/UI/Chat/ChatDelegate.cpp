@@ -30,7 +30,7 @@ void ChatDelegate::paint(QPainter *painter, const QStyleOptionViewItem &option,
     if (hasSeparator) {
         QRect separatorRect = ChatLayout::dateSeparatorRectForRow(rowRect);
 
-        painter->setPen(QPen(QColor(60, 60, 60), 1));
+        painter->setPen(QPen(option.palette.alternateBase().color(), 1));
         int midY = separatorRect.center().y();
         painter->drawLine(separatorRect.left() + 10, midY, separatorRect.right() - 10, midY);
 

@@ -39,8 +39,8 @@ void ChannelDelegate::paint(QPainter *painter, const QStyleOptionViewItem &optio
     painter->drawText(textRect, Qt::AlignLeft | Qt::AlignVCenter, text);
 
     if (node->type == ChannelNode::Type::Account) {
-        painter->fillRect(option.rect, QColor(40, 40, 45));
-        painter->setPen(Qt::white);
+        painter->fillRect(option.rect, option.palette.alternateBase().color());
+        painter->setPen(option.palette.brightText().color());
         painter->drawText(textRect, Qt::AlignLeft | Qt::AlignVCenter, node->name);
         painter->restore();
         return;
@@ -64,6 +64,7 @@ void ChannelDelegate::paint(QPainter *painter, const QStyleOptionViewItem &optio
 
     int unreadCount = index.data(Qt::UserRole + 1).toInt();
     if (unreadCount > 0) {
+        // todo ugly
         QRect badgeRect(option.rect.right() - 20, option.rect.top() + 4, 16, 16);
         painter->setBrush(Qt::red);
         painter->setPen(Qt::NoPen);
