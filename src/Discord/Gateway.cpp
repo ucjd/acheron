@@ -286,6 +286,9 @@ void Gateway::networkLoop()
 
     curl_easy_setopt(curl, CURLOPT_URL, gatewayUrl.toUtf8().constData());
     curl_easy_setopt(curl, CURLOPT_CONNECT_ONLY, 2L);
+    curl_easy_setopt(curl, CURLOPT_USERAGENT,
+                     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like "
+                     "Gecko) Chrome/116.0.0.0 Safari/537.36");
     // curl_easy_setopt(curl, CURLOPT_PROXY, "http://127.0.0.1:8888");
     // dont verify
     // curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
