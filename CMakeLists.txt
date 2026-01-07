@@ -44,6 +44,7 @@ set(PROJECT_SOURCES
     src/UI/AccountsModel.cpp
     src/UI/TypingIndicator.cpp
     src/UI/ElidedLabel.cpp
+    src/UI/ImageViewer.cpp
     src/UI/ChannelList/ChannelDelegate.cpp
     src/UI/ChannelList/ChannelTreeModel.cpp
     src/UI/Chat/ChatModel.cpp

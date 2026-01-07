@@ -152,6 +152,50 @@ QString getLinkAt(const QAbstractItemView *view, const QModelIndex &index, const
     return doc.documentLayout()->anchorAt(localPos);
 }
 
+std::optional<AttachmentData> getAttachmentAt(const QAbstractItemView *view,
+                                              const QModelIndex &index, const QPoint &mousePos)
+{
+    AttachmentData result;
+    result.isLoading = false;
+
+    if (!index.isValid() || !view)
+        return std::nullopt;
+
+    QList<AttachmentData> attachments =
+            index.data(ChatModel::AttachmentsRole).value<QList<AttachmentData>>();
+
+    if (attachments.isEmpty())
+        return result;
+
+    QRect rowRect = view->visualRect(index);
+    bool showHeader = index.data(ChatModel::ShowHeaderRole).toBool();
+    bool hasSeparator = index.data(ChatModel::DateSeparatorRole).toBool();
+    QString html = index.data(ChatModel::HtmlRole).toString();
+    QFont font = view->font();
+    QFontMetrics fm(font);
+
+    QRect textRect = textRectForRow(rowRect, showHeader, fm, hasSeparator);
+
+    // calculate actual text height
+    QTextDocument doc;
+    setupDocument(doc, html, font, textRect.width());
+    int realTextHeight = int(std::ceil(doc.size().height()));
+
+    int attachmentTop = textRect.top() + realTextHeight + padding();
+
+    for (const auto &att : attachments) {
+        QRect imgRect(textRect.left(), attachmentTop, att.displaySize.width(),
+                      att.displaySize.height());
+
+        if (imgRect.contains(mousePos))
+            return att;
+
+        attachmentTop = imgRect.bottom() + padding();
+    }
+
+    return result;
+}
+
 } // namespace ChatLayout
 } // namespace UI
 } // namespace Acheron

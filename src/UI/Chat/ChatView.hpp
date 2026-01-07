@@ -3,9 +3,12 @@
 #include <QtWidgets>
 
 #include "ChatLayout.hpp"
+#include "ChatModel.hpp"
 
 namespace Acheron {
 namespace UI {
+
+class ImageViewer;
 struct ChatCursor
 {
     int row = -1;

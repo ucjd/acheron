@@ -1,6 +1,7 @@
 #include "ChatView.hpp"
 
 #include "UI/Dialogs/ConfirmPopup.hpp"
+#include "UI/ImageViewer.hpp"
 
 namespace Acheron {
 namespace UI {
@@ -111,7 +112,9 @@ void ChatView::mouseMoveEvent(QMouseEvent *event)
     int charPos = ChatLayout::hitTestCharIndex(this, idx, pos);
 
     QString link = ChatLayout::getLinkAt(this, idx, pos);
-    if (!link.isEmpty()) {
+    std::optional<AttachmentData> hoveredAtt = ChatLayout::getAttachmentAt(this, idx, pos);
+
+    if (!link.isEmpty() || hoveredAtt.has_value()) {
         viewport()->setCursor(Qt::PointingHandCursor);
     } else {
         if (charPos >= 0) {
@@ -140,6 +143,14 @@ void ChatView::mouseReleaseEvent(QMouseEvent *event)
     if (event->button() == Qt::LeftButton) {
         QPoint pos = event->pos();
         QModelIndex idx = indexAt(pos);
+
+        std::optional<AttachmentData> att = ChatLayout::getAttachmentAt(this, idx, pos);
+        if (att.has_value()) {
+            auto *viewer = new ImageViewer(window());
+            viewer->showImage(att->proxyUrl, att->pixmap);
+            QListView::mouseReleaseEvent(event);
+            return;
+        }
 
         QString link = ChatLayout::getLinkAt(this, idx, pos);
 
