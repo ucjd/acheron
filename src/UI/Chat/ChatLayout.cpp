@@ -155,9 +155,6 @@ QString getLinkAt(const QAbstractItemView *view, const QModelIndex &index, const
 std::optional<AttachmentData> getAttachmentAt(const QAbstractItemView *view,
                                               const QModelIndex &index, const QPoint &mousePos)
 {
-    AttachmentData result;
-    result.isLoading = false;
-
     if (!index.isValid() || !view)
         return std::nullopt;
 
@@ -165,7 +162,7 @@ std::optional<AttachmentData> getAttachmentAt(const QAbstractItemView *view,
             index.data(ChatModel::AttachmentsRole).value<QList<AttachmentData>>();
 
     if (attachments.isEmpty())
-        return result;
+        return std::nullopt;
 
     QRect rowRect = view->visualRect(index);
     bool showHeader = index.data(ChatModel::ShowHeaderRole).toBool();
@@ -193,7 +190,7 @@ std::optional<AttachmentData> getAttachmentAt(const QAbstractItemView *view,
         attachmentTop = imgRect.bottom() + padding();
     }
 
-    return result;
+    return std::nullopt;
 }
 
 } // namespace ChatLayout
