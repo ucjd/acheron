@@ -12,7 +12,7 @@ enable_testing()
 
 find_package(CURL REQUIRED)
 
-find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Core Gui Widgets Network Sql Test)
+find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Core Gui Widgets Network Sql Test LinguistTools)
 find_package(Qt${QT_VERSION_MAJOR}
     COMPONENTS
         Core
@@ -22,8 +22,9 @@ find_package(Qt${QT_VERSION_MAJOR}
         Sql
         Concurrent
         Test
+        LinguistTools
 )
-qt_standard_project_setup()
+qt_standard_project_setup(I18N_TRANSLATED_LANGUAGES en)
 
 set(PROJECT_SOURCES
     resources.qrc
@@ -34,10 +35,14 @@ set(PROJECT_SOURCES
     src/Core/Logging.cpp
     src/Core/MessageManager.cpp
     src/Core/ImageManager.cpp
+    src/Core/UserManager.cpp
+    src/Core/TypingTracker.cpp
     src/Core/Markdown/Parser.cpp
     src/UI/MainWindow.cpp
     src/UI/AccountsWindow.cpp
     src/UI/AccountsModel.cpp
+    src/UI/TypingIndicator.cpp
+    src/UI/ElidedLabel.cpp
     src/UI/ChannelList/ChannelDelegate.cpp
     src/UI/ChannelList/ChannelTreeModel.cpp
     src/UI/Chat/ChatModel.cpp
@@ -54,6 +59,8 @@ set(PROJECT_SOURCES
     src/Storage/GuildRepository.cpp
     src/Storage/ChannelRepository.cpp
     src/Storage/MessageRepository.cpp
+    src/Storage/UserRepository.cpp
+    src/Storage/MemberRepository.cpp
     src/Discord/Client.cpp
     src/Discord/Gateway.cpp
     src/Discord/IngestThread.cpp
@@ -67,6 +74,8 @@ qt_add_executable(TestMarkdown tests/tst_Markdown.cpp src/Core/Markdown/Parser.c
 target_link_libraries(TestMarkdown PRIVATE Qt::Core Qt::Test)
 target_include_directories(TestMarkdown PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
 add_test(NAME MarkdownTests COMMAND TestMarkdown)
+
+qt_add_translations(${PROJECT_NAME})
 
 if (MSVC)
     target_link_options(${PROJECT_NAME} PRIVATE $<$<CONFIG:Debug>:/INCREMENTAL>)
