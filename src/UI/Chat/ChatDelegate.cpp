@@ -252,6 +252,18 @@ void ChatDelegate::paint(QPainter *painter, const QStyleOptionViewItem &option,
                 continue;
             }
 
+            if (embed.type == EmbedType::Image) {
+                if (!embed.thumbnail.isNull()) {
+                    QPixmap scaledThumb = embed.thumbnail.scaled(
+                            embed.thumbnailSize * embed.thumbnail.devicePixelRatio(),
+                            Qt::KeepAspectRatio, Qt::SmoothTransformation);
+                    painter->drawPixmap(textRect.left(), embedRect.top(), scaledThumb);
+                }
+
+                currentTop += embedLayout.totalHeight + ChatLayout::padding();
+                continue;
+            }
+
             QColor bgColor = option.palette.base().color().darker(110);
             painter->fillRect(embedRect, bgColor);
 

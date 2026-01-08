@@ -218,6 +218,30 @@ EmbedLayout calculateEmbedLayout(const EmbedData &embed, const QFont &font, int 
         return layout;
     }
 
+    if (embed.type == EmbedType::Image) {
+        layout.hasThumbnail = false;
+        layout.contentWidth = contentWidth;
+        int currentY = 0;
+
+        layout.imagesY = currentY;
+        layout.imagesHeight = 0;
+
+        if (!embed.thumbnail.isNull()) {
+            QSize actualSize =
+                    embed.thumbnail.size().scaled(embed.thumbnailSize, Qt::KeepAspectRatio);
+            layout.imagesHeight = actualSize.height();
+            currentY += layout.imagesHeight;
+        }
+
+        layout.totalHeight = currentY;
+        layout.thumbnailY = 0;
+
+        layout.embedRect = QRect(0, top, embedWidth, layout.totalHeight);
+        layout.contentRect = QRect(0, 0, contentWidth, layout.totalHeight);
+
+        return layout;
+    }
+
     layout.hasThumbnail =
             !embed.thumbnail.isNull() || (!embed.videoThumbnail.isNull() && embed.images.isEmpty());
     if (layout.hasThumbnail)
