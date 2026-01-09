@@ -174,6 +174,28 @@ void Parser::setupDefaultRules()
     };
     rules.append(url);
 
+    MarkdownRule link;
+    link.name = "link";
+    link.order = 17;
+    link.regex = QRegularExpression(
+            R"(^\[((?:\[[^\]]*\]|[^\[\]]|\](?=[^\[]*\]))*)\]\(\s*<?((?:\([^)]*\)|[^\s\\]|\\.)*?)>?(?:\s+['"]([\s\S]*?)['"])?\s*\))");
+    link.match = inlineRegex(link.regex);
+    link.parse = [](const Capture &match, NestedParseFn nestedParse, ParseState state) -> AstNode {
+        AstNode node;
+        node.type = "link";
+        node.children = nestedParse(match.captured(1), state);
+        node.attributes["href"] = match.captured(2);
+        node.attributes["title"] = match.captured(3);
+        return node;
+    };
+    link.html = [](const AstNode &node,
+                   std::function<QString(const QList<AstNode> &)> renderChildren) -> QString {
+        return QString("<a href=\"%1\">%2</a>")
+                .arg(node.attributes["href"].toString().toHtmlEscaped())
+                .arg(renderChildren(node.children));
+    };
+    rules.append(link);
+
     MarkdownRule em;
     em.name = "em";
     em.order = 20;
