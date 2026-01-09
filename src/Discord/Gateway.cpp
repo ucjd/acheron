@@ -5,6 +5,8 @@
 #include "Outbound.hpp"
 #include "Inbound.hpp"
 #include "Events.hpp"
+#include "CurlUtils.hpp"
+#include "ClientIdentity.hpp"
 
 #include "Core/Logging.hpp"
 
@@ -16,8 +18,9 @@ static size_t write_cb(char *b, size_t size, size_t nmemb, void *userdata)
     return size * nmemb;
 }
 
-Gateway::Gateway(const QString &token, const QString &gatewayUrl, QObject *parent)
-    : QObject(parent), token(token), gatewayUrl(gatewayUrl), running(false)
+Gateway::Gateway(const QString &token, const QString &gatewayUrl, ClientIdentity &identity,
+                 QObject *parent)
+    : QObject(parent), token(token), gatewayUrl(gatewayUrl), identity(identity), running(false)
 {
 }
 
@@ -216,29 +219,12 @@ void Gateway::handleHello(const Inbound &data)
 
 void Gateway::identify()
 {
-    launchSignature = generateLaunchSignature();
-    launchId = QUuid::createUuid().toString(QUuid::WithoutBraces);
-
-    ClientProperties properties;
-    properties.os = "Windows";
-    properties.browser = "Firefox";
-    properties.device = "";
-    properties.systemLocale = "en-US";
-    properties.hasClientMods = false;
-    properties.browserUserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:148.0) "
-                                  "Gecko/20100101 Firefox/148.0";
-    properties.browserVersion = "148.0";
-    properties.osVersion = "10";
-    properties.referrer = "https://discord.com/";
-    properties.referringDomain = "discord.com";
-    properties.referrerCurrent = "";
-    properties.referringDomainCurrent = "";
-    properties.releaseChannel = "stable";
-    properties.clientBuildNumber = 482285;
-    properties.clientEventSource = nullptr;
-    properties.clientLaunchId = launchId;
-    properties.launchSignature = launchSignature;
-    properties.clientAppState = "unfocused";
+    ClientPropertiesBuildParams params;
+    params.clientAppState = "focused";
+    params.includeClientHeartbeatSessionId = false;
+    params.isFastConnect = false;
+    params.gatewayConnectReasons = "AppSkeleton";
+    ClientProperties properties = identity.buildClientProperties(params);
 
     UpdatePresence presence;
     presence.status = "unknown";
@@ -256,23 +242,6 @@ void Gateway::identify()
     identify.clientState = clientState;
 
     sendPayload(identify.toJson());
-}
-
-QString Gateway::generateLaunchSignature()
-{
-    QUuid uuid = QUuid::createUuid();
-    QByteArray bytes = uuid.toRfc4122();
-
-    static constexpr quint8 mask[16] = {
-        0xff, 0x7f, 0xef, 0xef, 0xf7, 0xef, 0xf7, 0xff,
-        0xdf, 0x7e, 0xff, 0xbf, 0xfe, 0xff, 0xf7, 0xff,
-    };
-
-    for (int i = 0; i < 16; i++)
-        bytes[i] = static_cast<char>(static_cast<quint8>(bytes[i]) & static_cast<quint8>(mask[i]));
-
-    QUuid signature = QUuid::fromRfc4122(bytes);
-    return signature.toString(QUuid::WithoutBraces);
 }
 
 static int curlDebug(CURL *, curl_infotype type, char *data, size_t size, void *)
@@ -294,11 +263,16 @@ void Gateway::networkLoop()
     curl_version_info_data *info = curl_version_info(CURLVERSION_NOW);
     printf("SSL backend: %s\n", info->ssl_version);
 
+    QString certPath = CurlUtils::getCertificatePath();
+    if (!certPath.isEmpty())
+        curl_easy_setopt(curl, CURLOPT_CAINFO, certPath.toUtf8().constData());
+
     curl_easy_setopt(curl, CURLOPT_URL, gatewayUrl.toUtf8().constData());
     curl_easy_setopt(curl, CURLOPT_CONNECT_ONLY, 2L);
-    curl_easy_setopt(curl, CURLOPT_USERAGENT,
-                     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like "
-                     "Gecko) Chrome/116.0.0.0 Safari/537.36");
+#ifdef IS_CURL_IMPERSONATE
+    curl_easy_impersonate(curl, CurlUtils::getImpersonateTarget().toUtf8().constData(), 1);
+#endif
+    curl_easy_setopt(curl, CURLOPT_USERAGENT, CurlUtils::getUserAgent().toUtf8().constData());
     // curl_easy_setopt(curl, CURLOPT_PROXY, "http://127.0.0.1:8888");
     // dont verify
     // curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
@@ -308,6 +282,9 @@ void Gateway::networkLoop()
     CURLcode res = curl_easy_perform(curl);
     if (res != CURLE_OK) {
         qWarning() << "Failed to connect to gateway:" << curl_easy_strerror(res);
+        emit disconnected(CloseCode::INTERNAL,
+                          QString("Failed to connect to gateway: ") + curl_easy_strerror(res));
+        return;
     }
 
     emit connected();

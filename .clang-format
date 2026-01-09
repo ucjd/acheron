@@ -31,6 +31,7 @@ SpaceAfterTemplateKeyword: true
 
 BreakBeforeBinaryOperators: None
 AlignOperands: Align
+PenaltyReturnTypeOnItsOwnLine: 674206767
 
 # Braces are usually attached, but not after functions or class declarations.
 BreakBeforeBraces: Custom

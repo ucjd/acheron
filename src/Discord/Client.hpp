@@ -14,6 +14,7 @@
 
 #include "Gateway.hpp"
 #include "HttpClient.hpp"
+#include "ClientIdentity.hpp"
 
 using Acheron::Core::Snowflake;
 
@@ -80,6 +81,7 @@ private:
     QString baseUrl;
     QString token;
 
+    ClientIdentity identity;
     HttpClient *httpClient;
     Gateway *gateway;
 

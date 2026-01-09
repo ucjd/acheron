@@ -35,8 +35,9 @@ struct ClientProperties : Acheron::Core::JsonUtils::JsonObject
     Field<QString> clientLaunchId;
     Field<QString> launchSignature;
     Field<QString> clientAppState;
-    Field<bool> isFastConnect;
-    Field<QString> gatewayConnectReasons;
+    Field<bool, true> isFastConnect;
+    Field<QString, true> gatewayConnectReasons;
+    Field<QString, true> clientHeartbeatSessionId;
 
     QJsonObject toJson() const
     {
@@ -61,6 +62,7 @@ struct ClientProperties : Acheron::Core::JsonUtils::JsonObject
         insert(obj, "client_app_state", clientAppState);
         insert(obj, "is_fast_connect", isFastConnect);
         insert(obj, "gateway_connect_reasons", gatewayConnectReasons);
+        insert(obj, "client_heartbeat_session_id", clientHeartbeatSessionId);
 
         return obj;
     }

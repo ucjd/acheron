@@ -14,8 +14,10 @@ Client::Client(const QString &token, const QString &gatewayUrl, const QString &b
 {
     netManager = new QNetworkAccessManager(this);
 
-    gateway = new Gateway(token, gatewayUrl, this);
-    httpClient = new HttpClient(baseUrl, token, this);
+    identity.regenerateClientHeartbeatSessionId();
+
+    gateway = new Gateway(token, gatewayUrl, identity, this);
+    httpClient = new HttpClient(baseUrl, token, identity, this);
 
     connect(gateway, &Gateway::connected, this, &Client::onConnected);
     connect(gateway, &Gateway::disconnected, this, &Client::onDisconnected);

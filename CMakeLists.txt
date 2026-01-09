@@ -67,6 +67,8 @@ set(PROJECT_SOURCES
     src/Discord/Gateway.cpp
     src/Discord/IngestThread.cpp
     src/Discord/HttpClient.cpp
+    src/Discord/CurlUtils.cpp
+    src/Discord/ClientIdentity.cpp
     src/App.cpp
 )
 
@@ -109,3 +111,25 @@ target_link_libraries(${PROJECT_NAME}
         CURL::libcurl
 )
 target_precompile_headers(${PROJECT_NAME} PUBLIC src/pch.h)
+
+include(CheckSymbolExists)
+set(CMAKE_REQUIRED_LIBRARIES CURL::libcurl)
+check_symbol_exists(curl_easy_impersonate "curl/curl.h" HAS_CURL_IMPERSONATE)
+unset(CMAKE_REQUIRED_LIBRARIES)
+
+if(HAS_CURL_IMPERSONATE)
+    target_compile_definitions(${PROJECT_NAME} PRIVATE IS_CURL_IMPERSONATE)
+else()
+    message(WARNING "curl_easy_impersonate not found, libcurl-impersonate is highly recommended")
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/certs/cacert.pem")
+    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E make_directory
+            "$<TARGET_FILE_DIR:${PROJECT_NAME}>/certs"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${CMAKE_CURRENT_SOURCE_DIR}/certs/cacert.pem"
+            "$<TARGET_FILE_DIR:${PROJECT_NAME}>/certs/cacert.pem"
+        COMMENT "Copying cacert.pem to build directory"
+    )
+endif()

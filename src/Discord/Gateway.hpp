@@ -15,11 +15,14 @@
 namespace Acheron {
 namespace Discord {
 
+class ClientIdentity;
+
 class Gateway : public QObject
 {
     Q_OBJECT
 public:
-    explicit Gateway(const QString &token, const QString &gatewayUrl, QObject *parent = nullptr);
+    explicit Gateway(const QString &token, const QString &gatewayUrl, ClientIdentity &identity,
+                     QObject *parent = nullptr);
     ~Gateway();
 
     void start();
@@ -51,14 +54,13 @@ private:
     void handleHello(const Inbound &data);
     void identify();
 
-    QString generateLaunchSignature();
-
     void networkLoop();
     void heartbeatLoop();
 
 private:
     QString token;
     QString gatewayUrl;
+    ClientIdentity &identity;
 
     std::atomic<bool> running;
 
@@ -72,9 +74,6 @@ private:
     std::thread networkThread;
     std::chrono::steady_clock::time_point closeTime;
     static constexpr std::chrono::milliseconds closeTimeout = std::chrono::milliseconds(1000);
-
-    QString launchId;
-    QString launchSignature;
 
     std::atomic<int> lastReceivedSequence = 0;
 
