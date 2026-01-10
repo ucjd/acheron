@@ -181,26 +181,28 @@ AttachmentGridLayout calculateAttachmentGrid(int count, int maxWidth)
     return layout;
 }
 
-EmbedLayout calculateEmbedLayout(const EmbedData &embed, const QFont &font, int maxWidth, int top)
+EmbedLayout calculateEmbedLayout(const EmbedData &embed, const QFont &font, int maxWidth, int left,
+                                 int top)
 {
     EmbedLayout layout = {};
 
     int embedWidth = std::min(maxWidth, embedMaxWidth());
     int contentWidth = embedWidth - embedBorderWidth() - embedPadding() * 2;
+    int contentLeft = left + embedBorderWidth() + embedPadding();
 
     if (embed.type == EmbedType::Gifv) {
         layout.hasThumbnail = false;
         layout.contentWidth = contentWidth;
         int currentY = 0;
 
-        layout.imagesY = currentY;
-        layout.imagesHeight = 0;
-
+        int imagesHeight = 0;
         if (!embed.thumbnail.isNull()) {
             QSize actualSize =
                     embed.thumbnail.size().scaled(embed.thumbnailSize, Qt::KeepAspectRatio);
-            layout.imagesHeight = actualSize.height();
-            currentY += layout.imagesHeight;
+            imagesHeight = actualSize.height();
+            layout.imagesRect =
+                    QRect(left, top + currentY, actualSize.width(), actualSize.height());
+            currentY += imagesHeight;
         }
 
         QFont gifFont = font;
@@ -210,10 +212,8 @@ EmbedLayout calculateEmbedLayout(const EmbedData &embed, const QFont &font, int 
         currentY += gifLabelHeight;
 
         layout.totalHeight = currentY;
-        layout.thumbnailY = 0;
-
-        layout.embedRect = QRect(0, top, embedWidth, layout.totalHeight);
-        layout.contentRect = QRect(0, 0, contentWidth, layout.totalHeight);
+        layout.embedRect = QRect(left, top, embedWidth, layout.totalHeight);
+        layout.contentRect = QRect(contentLeft, top, contentWidth, layout.totalHeight);
 
         return layout;
     }
@@ -223,21 +223,17 @@ EmbedLayout calculateEmbedLayout(const EmbedData &embed, const QFont &font, int 
         layout.contentWidth = contentWidth;
         int currentY = 0;
 
-        layout.imagesY = currentY;
-        layout.imagesHeight = 0;
-
         if (!embed.thumbnail.isNull()) {
             QSize actualSize =
                     embed.thumbnail.size().scaled(embed.thumbnailSize, Qt::KeepAspectRatio);
-            layout.imagesHeight = actualSize.height();
-            currentY += layout.imagesHeight;
+            layout.imagesRect =
+                    QRect(left, top + currentY, actualSize.width(), actualSize.height());
+            currentY += actualSize.height();
         }
 
         layout.totalHeight = currentY;
-        layout.thumbnailY = 0;
-
-        layout.embedRect = QRect(0, top, embedWidth, layout.totalHeight);
-        layout.contentRect = QRect(0, 0, contentWidth, layout.totalHeight);
+        layout.embedRect = QRect(left, top, embedWidth, layout.totalHeight);
+        layout.contentRect = QRect(contentLeft, top, contentWidth, layout.totalHeight);
 
         return layout;
     }
@@ -249,63 +245,64 @@ EmbedLayout calculateEmbedLayout(const EmbedData &embed, const QFont &font, int 
 
     layout.contentWidth = contentWidth;
 
-    int currentY = embedPadding();
+    int contentTop = top + embedPadding();
+    int currentY = 0;
 
-    layout.providerY = currentY;
-    layout.providerHeight = 0;
     if (!embed.providerName.isEmpty()) {
         QFont providerFont = font;
         providerFont.setPointSize(providerFont.pointSize() - 2);
         QFontMetrics providerFm(providerFont);
-        layout.providerHeight = providerFm.height() + 4;
-        currentY += layout.providerHeight;
+        int providerHeight = providerFm.height() + 4;
+        layout.providerRect =
+                QRect(contentLeft, contentTop + currentY, contentWidth, providerHeight);
+        currentY += providerHeight;
     }
 
-    layout.authorY = currentY;
-    layout.authorHeight = 0;
     if (!embed.authorName.isEmpty()) {
         QFont authorFont = font;
         authorFont.setPointSize(authorFont.pointSize() - 1);
         authorFont.setBold(true);
         QFontMetrics authorFm(authorFont);
-        layout.authorHeight = std::max(authorIconSize(), authorFm.height()) + 4;
-        currentY += layout.authorHeight;
+        int authorHeight = std::max(authorIconSize(), authorFm.height()) + 4;
+        layout.authorRect = QRect(contentLeft, contentTop + currentY, contentWidth, authorHeight);
+        currentY += authorHeight;
     }
 
-    layout.titleY = currentY;
-    layout.titleHeight = 0;
     if (!embed.title.isEmpty()) {
         QFont titleFont = font;
         titleFont.setBold(true);
         QFontMetrics titleFm(titleFont);
-        layout.titleHeight = titleFm.height() + 4;
-        currentY += layout.titleHeight;
+        int titleHeight = titleFm.height() + 4;
+        layout.titleRect = QRect(contentLeft, contentTop + currentY, contentWidth, titleHeight);
+        currentY += titleHeight;
     }
 
-    layout.descriptionY = currentY;
-    layout.descriptionHeight = 0;
     if (!embed.description.isEmpty()) {
         QTextDocument descDoc;
         descDoc.setDefaultFont(font);
         descDoc.setTextWidth(contentWidth);
         descDoc.setPlainText(embed.description);
-        layout.descriptionHeight = int(std::ceil(descDoc.size().height())) + 8;
-        currentY += layout.descriptionHeight;
+        int descriptionHeight = int(std::ceil(descDoc.size().height())) + 8;
+        layout.descriptionRect =
+                QRect(contentLeft, contentTop + currentY, contentWidth, descriptionHeight);
+        currentY += descriptionHeight;
     }
 
-    layout.fieldsY = currentY;
-    layout.fieldsHeight = 0;
     if (!embed.fields.isEmpty()) {
         QFont fieldNameFont = font;
         fieldNameFont.setBold(true);
         QFontMetrics fieldNameFm(fieldNameFont);
         int fieldWidth = (contentWidth - 2 * fieldSpacing()) / 3;
 
+        int fieldsStartY = currentY;
+        int fieldX = 0;
         int fieldsInRow = 0;
+        int rowStartY = currentY;
         int maxRowHeight = 0;
-        int fieldsHeight = 0;
 
-        for (const auto &field : embed.fields) {
+        for (int i = 0; i < embed.fields.size(); ++i) {
+            const auto &field = embed.fields[i];
+
             QTextDocument valueDoc;
             valueDoc.setDefaultFont(font);
             valueDoc.setTextWidth(field.isInline ? fieldWidth : contentWidth);
@@ -313,70 +310,105 @@ EmbedLayout calculateEmbedLayout(const EmbedData &embed, const QFont &font, int 
             int valueHeight = int(std::ceil(valueDoc.size().height()));
             int fieldHeight = fieldNameFm.height() + 2 + valueHeight;
 
-            if (field.isInline) {
-                fieldsInRow++;
-                maxRowHeight = std::max(maxRowHeight, fieldHeight);
-                if (fieldsInRow >= 3) {
-                    fieldsHeight += maxRowHeight + fieldSpacing();
-                    fieldsInRow = 0;
-                    maxRowHeight = 0;
-                }
-            } else {
+            EmbedFieldLayout fieldLayout;
+            fieldLayout.fieldIndex = i;
+
+            if (!field.isInline) {
                 if (fieldsInRow > 0) {
-                    fieldsHeight += maxRowHeight + fieldSpacing();
+                    currentY = rowStartY + maxRowHeight + fieldSpacing();
+                    fieldX = 0;
                     fieldsInRow = 0;
                     maxRowHeight = 0;
+                    rowStartY = currentY;
                 }
-                fieldsHeight += fieldHeight + fieldSpacing();
+
+                fieldLayout.nameRect = QRect(contentLeft, contentTop + currentY, contentWidth,
+                                             fieldNameFm.height());
+                fieldLayout.valueRect =
+                        QRect(contentLeft, contentTop + currentY + fieldNameFm.height() + 2,
+                              contentWidth, valueHeight);
+                layout.fieldLayouts.append(fieldLayout);
+
+                currentY += fieldHeight + fieldSpacing();
+                rowStartY = currentY;
+            } else {
+                if (fieldsInRow >= 3) {
+                    currentY = rowStartY + maxRowHeight + fieldSpacing();
+                    fieldX = 0;
+                    fieldsInRow = 0;
+                    maxRowHeight = 0;
+                    rowStartY = currentY;
+                }
+
+                int xPos = contentLeft + fieldX;
+                fieldLayout.nameRect =
+                        QRect(xPos, contentTop + currentY, fieldWidth, fieldNameFm.height());
+                fieldLayout.valueRect =
+                        QRect(xPos, contentTop + currentY + fieldNameFm.height() + 2, fieldWidth,
+                              valueHeight);
+                layout.fieldLayouts.append(fieldLayout);
+
+                maxRowHeight = std::max(maxRowHeight, fieldHeight);
+                fieldX += fieldWidth + fieldSpacing();
+                fieldsInRow++;
             }
         }
-        if (fieldsInRow > 0)
-            fieldsHeight += maxRowHeight + fieldSpacing();
 
-        layout.fieldsHeight = fieldsHeight;
-        currentY += fieldsHeight;
+        if (fieldsInRow > 0)
+            currentY = rowStartY + maxRowHeight + fieldSpacing();
     }
 
-    layout.imagesY = currentY;
-    layout.imagesHeight = 0;
     if (!embed.images.isEmpty()) {
+        int imagesTop = contentTop + currentY;
+
         if (embed.images.size() == 1) {
             const auto &img = embed.images[0];
             if (!img.pixmap.isNull()) {
                 QSize actualSize = img.pixmap.size().scaled(img.displaySize, Qt::KeepAspectRatio);
-                layout.imagesHeight = actualSize.height();
+                layout.imagesRect =
+                        QRect(contentLeft, imagesTop, actualSize.width(), actualSize.height());
+                layout.imageLayouts.append({ 0, layout.imagesRect });
+                currentY += actualSize.height();
             }
         } else {
             AttachmentGridLayout grid = calculateAttachmentGrid(embed.images.size(), contentWidth);
-            layout.imagesHeight = grid.totalHeight;
+            layout.imagesRect = QRect(contentLeft, imagesTop, contentWidth, grid.totalHeight);
+            for (const auto &cell : grid.cells) {
+                QRect imgRect = cell.rect.translated(contentLeft, imagesTop);
+                layout.imageLayouts.append({ cell.attachmentIndex, imgRect });
+            }
+            currentY += grid.totalHeight;
         }
-        currentY += layout.imagesHeight;
     } else if (!embed.videoThumbnail.isNull() && embed.thumbnail.isNull()) {
+        int imagesTop = contentTop + currentY;
         QSize actualSize =
                 embed.videoThumbnail.size().scaled(embed.videoThumbnailSize, Qt::KeepAspectRatio);
-        layout.imagesHeight = actualSize.height();
-        currentY += layout.imagesHeight;
+        layout.imagesRect = QRect(contentLeft, imagesTop, actualSize.width(), actualSize.height());
+        currentY += actualSize.height();
     }
 
-    layout.footerY = currentY;
-    layout.footerHeight = 0;
     if (!embed.footerText.isEmpty()) {
         QFont footerFont = font;
         footerFont.setPointSize(footerFont.pointSize() - 2);
         QFontMetrics footerFm(footerFont);
-        layout.footerHeight = std::max(footerIconSize(), footerFm.height()) + 4;
-        currentY += layout.footerHeight;
+        int footerHeight = std::max(footerIconSize(), footerFm.height()) + 4;
+        layout.footerRect = QRect(contentLeft, contentTop + currentY, contentWidth, footerHeight);
+        currentY += footerHeight;
     }
 
-    if (layout.hasThumbnail)
-        currentY = std::max(currentY, embedPadding() * 2 + thumbnailSize());
+    int totalContentHeight = embedPadding() + currentY;
+    if (layout.hasThumbnail) {
+        int thumbTop = contentTop;
+        int thumbX = contentLeft + contentWidth + embedPadding();
+        QSize thumbSize =
+                !embed.thumbnail.isNull() ? embed.thumbnailSize : embed.videoThumbnailSize;
+        layout.thumbnailRect = QRect(thumbX, thumbTop, thumbSize.width(), thumbSize.height());
+        totalContentHeight = std::max(totalContentHeight, embedPadding() * 2 + thumbnailSize());
+    }
 
-    layout.totalHeight = currentY;
-    layout.thumbnailY = embedPadding();
-
-    layout.embedRect = QRect(0, top, embedWidth, layout.totalHeight);
-    layout.contentRect = QRect(embedBorderWidth() + embedPadding(), embedPadding(), contentWidth,
-                               layout.totalHeight - embedPadding());
+    layout.totalHeight = totalContentHeight;
+    layout.embedRect = QRect(left, top, embedWidth, layout.totalHeight);
+    layout.contentRect = QRect(contentLeft, contentTop, contentWidth, currentY);
 
     return layout;
 }
@@ -421,7 +453,7 @@ int calculateEmbedsHeight(const QList<EmbedData> &embeds, const QFont &font, int
 
     int totalHeight = 0;
     for (const auto &embed : embeds) {
-        EmbedLayout layout = calculateEmbedLayout(embed, font, textWidth, 0);
+        EmbedLayout layout = calculateEmbedLayout(embed, font, textWidth, 0, 0);
         totalHeight += layout.totalHeight + padding();
     }
     return totalHeight;
@@ -537,8 +569,8 @@ MessageLayout calculateMessageLayout(const LayoutContext &ctx)
     if (!ctx.embeds.isEmpty()) {
         int embedTop = layout.embedsTop;
         for (const auto &embed : ctx.embeds) {
-            EmbedLayout embedLayout = calculateEmbedLayout(embed, ctx.font, textWidth, embedTop);
-            embedLayout.embedRect.moveLeft(textLeft);
+            EmbedLayout embedLayout =
+                    calculateEmbedLayout(embed, ctx.font, textWidth, textLeft, embedTop);
             layout.embedLayouts.append(embedLayout);
             embedTop += embedLayout.totalHeight + padding();
             layout.embedsTotalHeight += embedLayout.totalHeight + padding();
@@ -744,31 +776,21 @@ std::optional<EmbedHitResult> getEmbedAt(const QAbstractItemView *view, const QM
         if (!embedLayout.embedRect.contains(mousePos))
             continue;
 
-        int contentLeft = embedLayout.embedRect.left() + embedBorderWidth() + embedPadding();
-        int contentTop = embedLayout.embedRect.top() + embedPadding();
-
-        if (embedLayout.hasThumbnail) {
-            QSize thumbSize =
-                    !embed.thumbnail.isNull() ? embed.thumbnailSize : embed.videoThumbnailSize;
-            int thumbX = contentLeft + embedLayout.contentWidth + embedPadding();
-            QRect thumbRect(thumbX, contentTop + embedLayout.thumbnailY, thumbSize.width(),
-                            thumbSize.height());
-            if (thumbRect.contains(mousePos)) {
+        if (embedLayout.hasThumbnail && !embedLayout.thumbnailRect.isNull()) {
+            if (embedLayout.thumbnailRect.contains(mousePos)) {
                 EmbedHitResult result;
                 result.embedIndex = embedIndex;
                 result.hitType = !embed.thumbnail.isNull() ? EmbedHitType::Image
                                                            : EmbedHitType::VideoThumbnail;
                 result.image = !embed.thumbnail.isNull() ? embed.thumbnail : embed.videoThumbnail;
-                result.imageSize = thumbSize;
+                result.imageSize = embedLayout.thumbnailRect.size();
                 result.url = embed.thumbnailUrl.toString();
                 return result;
             }
         }
 
-        if (!embed.authorName.isEmpty() && embedLayout.authorHeight > 0) {
-            QRect authorRect(contentLeft, contentTop + embedLayout.authorY,
-                             embedLayout.contentWidth, embedLayout.authorHeight);
-            if (authorRect.contains(mousePos) && !embed.authorUrl.isEmpty()) {
+        if (!embed.authorName.isEmpty() && !embedLayout.authorRect.isNull()) {
+            if (embedLayout.authorRect.contains(mousePos) && !embed.authorUrl.isEmpty()) {
                 EmbedHitResult result;
                 result.embedIndex = embedIndex;
                 result.hitType = EmbedHitType::Author;
@@ -777,10 +799,8 @@ std::optional<EmbedHitResult> getEmbedAt(const QAbstractItemView *view, const QM
             }
         }
 
-        if (!embed.title.isEmpty() && embedLayout.titleHeight > 0) {
-            QRect titleRect(contentLeft, contentTop + embedLayout.titleY, embedLayout.contentWidth,
-                            embedLayout.titleHeight);
-            if (titleRect.contains(mousePos) && !embed.url.isEmpty()) {
+        if (!embed.title.isEmpty() && !embedLayout.titleRect.isNull()) {
+            if (embedLayout.titleRect.contains(mousePos) && !embed.url.isEmpty()) {
                 EmbedHitResult result;
                 result.embedIndex = embedIndex;
                 result.hitType = EmbedHitType::Title;
@@ -789,57 +809,29 @@ std::optional<EmbedHitResult> getEmbedAt(const QAbstractItemView *view, const QM
             }
         }
 
-        if (!embed.images.isEmpty() && embedLayout.imagesHeight > 0) {
-            int imagesTop = contentTop + embedLayout.imagesY;
+        if (!embed.images.isEmpty() && !embedLayout.imageLayouts.isEmpty()) {
+            for (const auto &imgLayout : embedLayout.imageLayouts) {
+                if (imgLayout.imageIndex >= embed.images.size())
+                    continue;
 
-            if (embed.images.size() == 1) {
-                const auto &img = embed.images[0];
-                if (!img.pixmap.isNull()) {
-                    QSize actualSize =
-                            img.pixmap.size().scaled(img.displaySize, Qt::KeepAspectRatio);
-                    QRect imageRect(contentLeft, imagesTop, actualSize.width(),
-                                    actualSize.height());
-                    if (imageRect.contains(mousePos)) {
-                        EmbedHitResult result;
-                        result.embedIndex = embedIndex;
-                        result.hitType = EmbedHitType::Image;
-                        result.image = img.pixmap;
-                        result.imageSize = actualSize;
-                        result.url = img.url.toString();
-                        return result;
-                    }
-                }
-            } else {
-                AttachmentGridLayout grid =
-                        calculateAttachmentGrid(embed.images.size(), embedLayout.contentWidth);
-                for (const auto &cell : grid.cells) {
-                    if (cell.attachmentIndex >= embed.images.size())
-                        continue;
-
-                    QRect imgRect = cell.rect.translated(contentLeft, imagesTop);
-                    if (imgRect.contains(mousePos)) {
-                        const auto &img = embed.images[cell.attachmentIndex];
-                        EmbedHitResult result;
-                        result.embedIndex = embedIndex;
-                        result.hitType = EmbedHitType::Image;
-                        result.image = img.pixmap;
-                        result.imageSize = imgRect.size();
-                        result.url = img.url.toString();
-                        return result;
-                    }
+                if (imgLayout.rect.contains(mousePos)) {
+                    const auto &img = embed.images[imgLayout.imageIndex];
+                    EmbedHitResult result;
+                    result.embedIndex = embedIndex;
+                    result.hitType = EmbedHitType::Image;
+                    result.image = img.pixmap;
+                    result.imageSize = imgLayout.rect.size();
+                    result.url = img.url.toString();
+                    return result;
                 }
             }
         } else if (!embed.videoThumbnail.isNull() && embed.thumbnail.isNull()) {
-            int videoTop = contentTop + embedLayout.imagesY;
-            QSize actualSize = embed.videoThumbnail.size().scaled(embed.videoThumbnailSize,
-                                                                  Qt::KeepAspectRatio);
-            QRect videoRect(contentLeft, videoTop, actualSize.width(), actualSize.height());
-            if (videoRect.contains(mousePos)) {
+            if (!embedLayout.imagesRect.isNull() && embedLayout.imagesRect.contains(mousePos)) {
                 EmbedHitResult result;
                 result.embedIndex = embedIndex;
                 result.hitType = EmbedHitType::VideoThumbnail;
                 result.image = embed.videoThumbnail;
-                result.imageSize = actualSize;
+                result.imageSize = embedLayout.imagesRect.size();
                 result.url = embed.url;
                 return result;
             }

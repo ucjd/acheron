@@ -77,9 +77,15 @@ AttachmentGridLayout calculateAttachmentGrid(int count, int maxWidth);
 
 struct EmbedFieldLayout
 {
+    int fieldIndex;
     QRect nameRect;
     QRect valueRect;
-    int fieldHeight;
+};
+
+struct EmbedImageLayout
+{
+    int imageIndex;
+    QRect rect;
 };
 
 struct EmbedLayout
@@ -89,22 +95,16 @@ struct EmbedLayout
     int contentWidth;
     bool hasThumbnail;
 
-    int thumbnailY;
-    int providerY;
-    int authorY;
-    int titleY;
-    int descriptionY;
-    int fieldsY;
-    int imagesY;
-    int footerY;
+    QRect thumbnailRect;
+    QRect providerRect;
+    QRect authorRect;
+    QRect titleRect;
+    QRect descriptionRect;
+    QRect imagesRect;
+    QRect footerRect;
 
-    int providerHeight;
-    int authorHeight;
-    int titleHeight;
-    int descriptionHeight;
-    int fieldsHeight;
-    int imagesHeight;
-    int footerHeight;
+    QList<EmbedFieldLayout> fieldLayouts;
+    QList<EmbedImageLayout> imageLayouts;
 
     int totalHeight;
 };
@@ -157,7 +157,8 @@ struct LayoutContext
 };
 
 MessageLayout calculateMessageLayout(const LayoutContext &ctx);
-EmbedLayout calculateEmbedLayout(const EmbedData &embed, const QFont &font, int maxWidth, int top);
+EmbedLayout calculateEmbedLayout(const EmbedData &embed, const QFont &font, int maxWidth, int left,
+                                 int top);
 int calculateAttachmentsHeight(const QList<AttachmentData> &attachments, int textWidth);
 int calculateEmbedsHeight(const QList<EmbedData> &embeds, const QFont &font, int textWidth);
 enum class EmbedHitType { None, Title, Author, Image, VideoThumbnail };
