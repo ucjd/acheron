@@ -128,9 +128,6 @@ void Gateway::sendPayload(const QByteArray &data)
 
 void Gateway::onPayloadReceived(const QJsonObject &root)
 {
-    qCDebug(LogDiscord) << "Received payload:"
-                        << QJsonDocument(root).toJson(QJsonDocument::Compact);
-
     Inbound msg = Inbound::fromJson(root);
 
     if (msg.s.has_value())
