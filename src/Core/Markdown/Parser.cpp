@@ -154,6 +154,24 @@ void Parser::setupDefaultRules()
     };
     rules.append(newline);
 
+    MarkdownRule escape;
+    escape.name = "escape";
+    escape.order = 12;
+    escape.regex = QRegularExpression(R"(^\\([^0-9A-Za-z\s]))");
+    escape.match = inlineRegex(escape.regex);
+    escape.parse = [](const Capture &match, NestedParseFn nestedParse,
+                      ParseState state) -> AstNode {
+        AstNode node;
+        node.type = "text";
+        node.content = match.captured(1);
+        return node;
+    };
+    escape.html = [](const AstNode &node,
+                     std::function<QString(const QList<AstNode> &)> renderChildren) -> QString {
+        return node.content.toHtmlEscaped();
+    };
+    rules.append(escape);
+
     MarkdownRule url;
     url.name = "url";
     url.order = 16;
