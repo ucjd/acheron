@@ -294,8 +294,8 @@ void ChatDelegate::paint(QPainter *painter, const QStyleOptionViewItem &option,
             QFont titleFont = option.font;
             titleFont.setBold(true);
             painter->setFont(titleFont);
-            QColor titleColor =
-                    !embed.url.isEmpty() ? QColor(0, 168, 252) : option.palette.text().color();
+            QColor titleColor = !embed.url.isEmpty() ? option.palette.link().color()
+                                                     : option.palette.text().color();
             painter->setPen(titleColor);
 
             QTextDocument titleDoc;
