@@ -128,6 +128,8 @@ void Gateway::sendPayload(const QByteArray &data)
 
 void Gateway::onPayloadReceived(const QJsonObject &root)
 {
+    qCDebug(LogDiscord) << "Received payload" << root;
+
     Inbound msg = Inbound::fromJson(root);
 
     if (msg.s.has_value())
@@ -180,7 +182,14 @@ void Gateway::handleReady(const Inbound &data)
     emit gatewayReady(msg);
 }
 
-void Gateway::handleReadySupplemental(const Inbound &data) { }
+void Gateway::handleReadySupplemental(const Inbound &data)
+{
+    qCDebug(LogDiscord) << "Received ready supplemental event";
+
+    ReadySupplemental msg = data.getData<ReadySupplemental>();
+
+    emit gatewayReadySupplemental(msg);
+}
 
 void Gateway::handleMessageCreate(const Inbound &data)
 {

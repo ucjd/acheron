@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QSqlDatabase>
+#include <optional>
 
 #include "Core/Snowflake.hpp"
 
@@ -17,6 +18,7 @@ public:
     GuildRepository(Core::Snowflake accountId);
 
     void saveGuild(const Discord::Guild &guild, QSqlDatabase &db);
+    std::optional<Discord::Guild> getGuild(Core::Snowflake guildId);
 
 private:
 };

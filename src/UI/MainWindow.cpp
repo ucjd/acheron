@@ -94,19 +94,33 @@ void MainWindow::onChannelSelectionChanged(const QModelIndex &current, const QMo
         return;
     }
 
-    messageInput->setEnabled(true);
-    messageInput->setPlaceholder(node->name);
-
     ChannelNode *accountNode = channelTreeModel->getAccountNodeFor(node);
-    if (!accountNode)
+    if (!accountNode) {
+        messageInput->setEnabled(false);
         return;
+    }
 
     ClientInstance *selectedInstance = session->client(accountNode->id);
-    if (!selectedInstance)
+    if (!selectedInstance) {
+        messageInput->setEnabled(false);
         return;
+    }
 
     if (selectedInstance != currentInstance)
         switchActiveInstance(selectedInstance);
+
+    Core::Snowflake userId = selectedInstance->accountId();
+    Core::Snowflake channelId = node->id;
+
+    bool canSend = selectedInstance->permissions()->hasChannelPermission(
+            userId, channelId, Discord::Permission::SEND_MESSAGES);
+
+    messageInput->setEnabled(canSend);
+
+    if (canSend)
+        messageInput->setPlaceholder(node->name);
+    else
+        messageInput->setPlaceholder("You do not have permission to send messages");
 
     selectedInstance->discord()->ensureSubscriptionByChannel(node->id);
 

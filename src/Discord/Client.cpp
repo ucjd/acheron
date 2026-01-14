@@ -24,6 +24,7 @@ Client::Client(const QString &token, const QString &gatewayUrl, const QString &b
     connect(gateway, &Gateway::disconnected, this, &Client::onDisconnected);
 
     connect(gateway, &Gateway::gatewayReady, this, &Client::onGatewayReady);
+    connect(gateway, &Gateway::gatewayReadySupplemental, this, &Client::onGatewayReadySupplemental);
     connect(gateway, &Gateway::gatewayMessageCreate, this, &Client::onGatewayMessageCreate);
     connect(gateway, &Gateway::gatewayTypingStart, this, &Client::typingStart);
 }
@@ -127,6 +128,11 @@ void Client::onGatewayReady(const Ready &data)
     me = data.user;
 
     emit ready(data);
+}
+
+void Client::onGatewayReadySupplemental(const ReadySupplemental &data)
+{
+    emit readySupplemental(data);
 }
 
 void Client::onGatewayMessageCreate(const Message &msg)

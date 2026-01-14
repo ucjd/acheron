@@ -42,6 +42,7 @@ signals:
 
     void gatewayHello();
     void gatewayReady(const Ready &data);
+    void gatewayReadySupplemental(const ReadySupplemental &data);
     void gatewayMessageCreate(const Message &data);
     void gatewayTypingStart(const TypingStart &data);
 

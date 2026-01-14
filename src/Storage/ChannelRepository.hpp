@@ -1,5 +1,7 @@
 #pragma once
 
+#include <optional>
+
 #include "BaseRepository.hpp"
 
 #include "Core/Snowflake.hpp"
@@ -14,6 +16,15 @@ public:
     ChannelRepository(Core::Snowflake accountId);
 
     void saveChannel(const Discord::Channel &channel, QSqlDatabase &db);
+    void savePermissionOverwrites(Core::Snowflake channelId,
+                                  const QList<Discord::PermissionOverwrite> &overwrites,
+                                  QSqlDatabase &db);
+    QList<Discord::PermissionOverwrite> getPermissionOverwrites(Core::Snowflake channelId);
+
+    QHash<Core::Snowflake, QList<Discord::PermissionOverwrite>> getPermissionOverwritesForGuild(
+            Core::Snowflake guildId);
+
+    std::optional<Discord::Channel> getChannel(Core::Snowflake channelId);
 };
 
 } // namespace Storage

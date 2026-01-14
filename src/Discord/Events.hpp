@@ -14,6 +14,7 @@ struct Ready : Core::JsonUtils::JsonObject
     Field<User> user;
     Field<QList<GatewayGuild>> guilds;
     Field<QString> userSettingsProto;
+    Field<QList<QList<Member>>, true> mergedMembers;
 
     static Ready fromJson(const QJsonObject &obj)
     {
@@ -21,7 +22,34 @@ struct Ready : Core::JsonUtils::JsonObject
         get(obj, "user", ready.user);
         get(obj, "guilds", ready.guilds);
         get(obj, "user_settings_proto", ready.userSettingsProto);
+        get(obj, "merged_members", ready.mergedMembers);
         return ready;
+    }
+};
+
+struct SupplementalGuild : Core::JsonUtils::JsonObject
+{
+    Field<Core::Snowflake> id;
+
+    static SupplementalGuild fromJson(const QJsonObject &obj)
+    {
+        SupplementalGuild supplementalGuild;
+        get(obj, "id", supplementalGuild.id);
+        return supplementalGuild;
+    }
+};
+
+struct ReadySupplemental : Core::JsonUtils::JsonObject
+{
+    Field<QList<SupplementalGuild>> guilds;
+    Field<QList<QList<Member>>> mergedMembers;
+
+    static ReadySupplemental fromJson(const QJsonObject &obj)
+    {
+        ReadySupplemental readySupplemental;
+        get(obj, "guilds", readySupplemental.guilds);
+        get(obj, "merged_members", readySupplemental.mergedMembers);
+        return readySupplemental;
     }
 };
 

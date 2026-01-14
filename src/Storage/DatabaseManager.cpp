@@ -192,6 +192,44 @@ void DatabaseManager::setupCacheTables(const QString &connName)
     )");
 
     query.exec("CREATE INDEX idx_attachments_message_id ON attachments(message_id);");
+
+    query.exec(R"(
+        CREATE TABLE "roles" (
+            "id" INTEGER NOT NULL,
+            "guild_id" INTEGER NOT NULL,
+            "name" TEXT NOT NULL,
+            "permissions" INTEGER NOT NULL,
+            "position" INTEGER NOT NULL,
+            "color" INTEGER,
+            "hoist" INTEGER,
+            "icon" TEXT,
+            "unicode_emoji" TEXT,
+            "managed" INTEGER,
+            "mentionable" INTEGER,
+            PRIMARY KEY("id", "guild_id"),
+            FOREIGN KEY("guild_id") REFERENCES guilds("id") ON DELETE CASCADE
+        );
+    )");
+
+    query.exec("CREATE INDEX idx_roles_guild_id ON roles(guild_id);");
+    query.exec("CREATE INDEX idx_roles_position ON roles(guild_id, position);");
+    query.exec("CREATE INDEX idx_roles_lookup ON roles(guild_id, id);");
+
+    query.exec(R"(
+        CREATE TABLE "permission_overwrites" (
+            "channel_id" INTEGER NOT NULL,
+            "target_id" INTEGER NOT NULL,
+            "type" INTEGER NOT NULL,
+            "allow" INTEGER NOT NULL,
+            "deny" INTEGER NOT NULL,
+            PRIMARY KEY("channel_id", "target_id"),
+            FOREIGN KEY("channel_id") REFERENCES channels("id") ON DELETE CASCADE
+        );
+    )");
+
+    query.exec("CREATE INDEX idx_overwrites_channel_id ON permission_overwrites(channel_id);");
+    query.exec("CREATE INDEX idx_members_lookup ON members(guild_id, user_id);");
+    query.exec("CREATE INDEX idx_channels_guild ON channels(guild_id);");
 }
 } // namespace Storage
 } // namespace Acheron

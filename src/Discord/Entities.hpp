@@ -53,6 +53,7 @@ struct Member : Core::JsonUtils::JsonObject
     Field<int, true> flags;
     Field<bool, true> pending;
     Field<QDateTime, true, true> communicationDisabledUntil;
+    Field<Core::Snowflake, true> userId; // supplemental
 
     static Member fromJson(const QJsonObject &obj)
     {
@@ -68,7 +69,68 @@ struct Member : Core::JsonUtils::JsonObject
         get(obj, "flags", member.flags);
         get(obj, "pending", member.pending);
         get(obj, "communication_disabled_until", member.communicationDisabledUntil);
+        get(obj, "user_id", member.userId);
         return member;
+    }
+};
+
+struct Role : Core::JsonUtils::JsonObject
+{
+    Field<Core::Snowflake> id;
+    Field<QString> name;
+    Field<Permissions> permissions;
+    Field<int> position;
+    Field<int, true> color;
+    Field<bool, true> hoist;
+    Field<QString, true, true> icon;
+    Field<QString, true, true> unicodeEmoji;
+    Field<bool, true> managed;
+    Field<bool, true> mentionable;
+
+    static Role fromJson(const QJsonObject &obj)
+    {
+        Role role;
+        get(obj, "id", role.id);
+        get(obj, "name", role.name);
+        if (obj.contains("permissions")) {
+            QString permStr = obj["permissions"].toString();
+            role.permissions = Permissions::fromInt(permStr.toULongLong());
+        }
+        get(obj, "position", role.position);
+        get(obj, "color", role.color);
+        get(obj, "hoist", role.hoist);
+        get(obj, "icon", role.icon);
+        get(obj, "unicode_emoji", role.unicodeEmoji);
+        get(obj, "managed", role.managed);
+        get(obj, "mentionable", role.mentionable);
+        return role;
+    }
+};
+
+struct PermissionOverwrite : Core::JsonUtils::JsonObject
+{
+    enum class Type { Role = 0, Member = 1 };
+
+    Field<Core::Snowflake> id;
+    Field<Type> type;
+    Field<Permissions> allow;
+    Field<Permissions> deny;
+
+    static PermissionOverwrite fromJson(const QJsonObject &obj)
+    {
+        PermissionOverwrite overwrite;
+        get(obj, "id", overwrite.id);
+        if (obj.contains("type"))
+            overwrite.type = static_cast<Type>(obj["type"].toInt());
+        if (obj.contains("allow")) {
+            QString allowStr = obj["allow"].toString();
+            overwrite.allow = Permissions::fromInt(allowStr.toULongLong());
+        }
+        if (obj.contains("deny")) {
+            QString denyStr = obj["deny"].toString();
+            overwrite.deny = Permissions::fromInt(denyStr.toULongLong());
+        }
+        return overwrite;
     }
 };
 
@@ -80,6 +142,7 @@ struct Channel : Core::JsonUtils::JsonObject
     Field<int, true> position;
     Field<Core::Snowflake, true> guildId;
     Field<Core::Snowflake, true, true> parentId;
+    Field<QList<PermissionOverwrite>, true> permissionOverwrites;
 
     static Channel fromJson(const QJsonObject &obj)
     {
@@ -90,6 +153,7 @@ struct Channel : Core::JsonUtils::JsonObject
         get(obj, "position", channel.position);
         get(obj, "guild_id", channel.guildId);
         get(obj, "parent_id", channel.parentId);
+        get(obj, "permission_overwrites", channel.permissionOverwrites);
         return channel;
     }
 };
@@ -100,6 +164,7 @@ struct Guild : Core::JsonUtils::JsonObject
     Field<QString> name;
     Field<QString> icon;
     Field<Core::Snowflake> ownerId;
+    Field<QList<Role>, true> roles;
 
     static Guild fromJson(const QJsonObject &obj)
     {
@@ -108,6 +173,7 @@ struct Guild : Core::JsonUtils::JsonObject
         get(obj, "name", guild.name);
         get(obj, "icon", guild.icon);
         get(obj, "owner_id", guild.ownerId);
+        get(obj, "roles", guild.roles);
         return guild;
     }
 };
@@ -116,19 +182,21 @@ struct GatewayGuild : Core::JsonUtils::JsonObject
 {
     Field<Guild> properties;
     Field<QList<Channel>> channels;
+    Field<QList<Role>, true> roles;
 
     static GatewayGuild fromJson(const QJsonObject &obj)
     {
         GatewayGuild guild;
         get(obj, "properties", guild.properties);
         get(obj, "channels", guild.channels);
+        get(obj, "roles", guild.roles);
         return guild;
     }
 
     Guild asGuild() const
     {
         Guild guild = properties;
-        // todo copy other fields
+        guild.roles = roles;
         return guild;
     }
 };

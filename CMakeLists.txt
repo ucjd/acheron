@@ -38,6 +38,8 @@ set(PROJECT_SOURCES
     src/Core/AttachmentCache.cpp
     src/Core/UserManager.cpp
     src/Core/TypingTracker.cpp
+    src/Core/PermissionManager.cpp
+    src/Core/PermissionComputer.cpp
     src/Core/Markdown/Parser.cpp
     src/UI/MainWindow.cpp
     src/UI/TypingIndicator.cpp
@@ -64,6 +66,7 @@ set(PROJECT_SOURCES
     src/Storage/MessageRepository.cpp
     src/Storage/UserRepository.cpp
     src/Storage/MemberRepository.cpp
+    src/Storage/RoleRepository.cpp
     src/Discord/Client.cpp
     src/Discord/Gateway.cpp
     src/Discord/IngestThread.cpp

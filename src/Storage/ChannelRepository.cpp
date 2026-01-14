@@ -3,6 +3,9 @@
 #include "DatabaseManager.hpp"
 #include "Core/Logging.hpp"
 
+#include <QSqlQuery>
+#include <QSqlError>
+
 namespace Acheron {
 namespace Storage {
 
@@ -32,6 +35,149 @@ void ChannelRepository::saveChannel(const Discord::Channel &channel, QSqlDatabas
 
     if (!q.exec())
         qCWarning(LogDB) << "ChannelRepository: Save failed:" << q.lastError().text();
+}
+
+void ChannelRepository::savePermissionOverwrites(
+        Core::Snowflake channelId, const QList<Discord::PermissionOverwrite> &overwrites,
+        QSqlDatabase &db)
+{
+    QSqlQuery delQ(db);
+    delQ.prepare("DELETE FROM permission_overwrites WHERE channel_id = :channel_id");
+    delQ.bindValue(":channel_id", static_cast<qint64>(channelId));
+    delQ.exec();
+
+    if (overwrites.isEmpty())
+        return;
+
+    QSqlQuery q(db);
+    q.prepare(R"(
+        INSERT INTO permission_overwrites
+        (channel_id, target_id, type, allow, deny)
+        VALUES (:channel_id, :target_id, :type, :allow, :deny)
+    )");
+
+    for (const auto &ow : overwrites) {
+        q.bindValue(":channel_id", static_cast<qint64>(channelId));
+        q.bindValue(":target_id", static_cast<qint64>(ow.id.get()));
+        q.bindValue(":type", static_cast<int>(ow.type.get()));
+        q.bindValue(":allow", static_cast<qint64>(ow.allow.get()));
+        q.bindValue(":deny", static_cast<qint64>(ow.deny.get()));
+
+        if (!q.exec())
+            qCWarning(LogDB) << "ChannelRepository: Save overwrite failed:" << q.lastError().text();
+    }
+}
+
+QList<Discord::PermissionOverwrite> ChannelRepository::getPermissionOverwrites(
+        Core::Snowflake channelId)
+{
+    QList<Discord::PermissionOverwrite> overwrites;
+    auto db = getDb();
+    QSqlQuery q(db);
+    q.prepare(R"(
+        SELECT target_id, type, allow, deny
+        FROM permission_overwrites WHERE channel_id = :channel_id
+    )");
+    q.bindValue(":channel_id", static_cast<qint64>(channelId));
+
+    if (!q.exec())
+        return overwrites;
+
+    while (q.next()) {
+        Discord::PermissionOverwrite ow;
+        ow.id = static_cast<Core::Snowflake>(q.value(0).toLongLong());
+        ow.type = static_cast<Discord::PermissionOverwrite::Type>(q.value(1).toInt());
+        ow.allow = Discord::Permissions::fromInt(q.value(2).toLongLong());
+        ow.deny = Discord::Permissions::fromInt(q.value(3).toLongLong());
+        overwrites.append(ow);
+    }
+
+    return overwrites;
+}
+
+QHash<Core::Snowflake, QList<Discord::PermissionOverwrite>> ChannelRepository::
+        getPermissionOverwritesForGuild(Core::Snowflake guildId)
+{
+    QHash<Core::Snowflake, QList<Discord::PermissionOverwrite>> result;
+    auto db = getDb();
+
+    QSqlQuery channelIdsQuery(db);
+    channelIdsQuery.prepare("SELECT id FROM channels WHERE guild_id = :guild_id");
+    channelIdsQuery.bindValue(":guild_id", static_cast<qint64>(guildId));
+
+    if (!channelIdsQuery.exec())
+        return result;
+
+    QList<Core::Snowflake> channelIds;
+    while (channelIdsQuery.next())
+        channelIds.append(static_cast<Core::Snowflake>(channelIdsQuery.value(0).toLongLong()));
+
+    if (channelIds.isEmpty())
+        return result;
+
+    QString placeholders;
+    for (int i = 0; i < channelIds.size(); ++i) {
+        if (i > 0)
+            placeholders += ",";
+        placeholders += QString(":id%1").arg(i);
+    }
+
+    // clang-format off
+    QSqlQuery q(db);
+    q.prepare(QString(R"(
+        SELECT channel_id, target_id, type, allow, deny
+        FROM permission_overwrites
+        WHERE channel_id IN (%1)
+    )").arg(placeholders));
+    // clang-format on
+
+    for (int i = 0; i < channelIds.size(); ++i)
+        q.bindValue(QString(":id%1").arg(i), static_cast<qint64>(channelIds[i]));
+
+    if (!q.exec())
+        return result;
+
+    while (q.next()) {
+        Core::Snowflake channelId = static_cast<Core::Snowflake>(q.value(0).toLongLong());
+        Discord::PermissionOverwrite ow;
+        ow.id = static_cast<Core::Snowflake>(q.value(1).toLongLong());
+        ow.type = static_cast<Discord::PermissionOverwrite::Type>(q.value(2).toInt());
+        ow.allow = Discord::Permissions::fromInt(q.value(3).toLongLong());
+        ow.deny = Discord::Permissions::fromInt(q.value(4).toLongLong());
+        result[channelId].append(ow);
+    }
+
+    return result;
+}
+
+std::optional<Discord::Channel> ChannelRepository::getChannel(Core::Snowflake channelId)
+{
+    auto db = getDb();
+    QSqlQuery q(db);
+    q.prepare(R"(
+        SELECT id, type, position, name, guild_id, parent_id
+        FROM channels WHERE id = :id
+    )");
+    q.bindValue(":id", static_cast<qint64>(channelId));
+
+    if (!q.exec() || !q.next())
+        return std::nullopt;
+
+    Discord::Channel channel;
+    channel.id = static_cast<Core::Snowflake>(q.value(0).toLongLong());
+    channel.type = static_cast<Discord::ChannelType>(q.value(1).toInt());
+    if (!q.value(2).isNull())
+        channel.position = q.value(2).toInt();
+    if (!q.value(3).isNull())
+        channel.name = q.value(3).toString();
+    if (!q.value(4).isNull())
+        channel.guildId = static_cast<Core::Snowflake>(q.value(4).toLongLong());
+    if (!q.value(5).isNull())
+        channel.parentId = static_cast<Core::Snowflake>(q.value(5).toLongLong());
+
+    channel.permissionOverwrites = getPermissionOverwrites(channelId);
+
+    return channel;
 }
 
 } // namespace Storage

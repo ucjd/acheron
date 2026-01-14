@@ -9,6 +9,7 @@
 #include "Discord/Client.hpp"
 #include "MessageManager.hpp"
 #include "UserManager.hpp"
+#include "PermissionManager.hpp"
 
 namespace Acheron {
 namespace Core {
@@ -26,6 +27,7 @@ public:
     [[nodiscard]] Discord::Client *discord() const;
     [[nodiscard]] MessageManager *messages() const;
     [[nodiscard]] UserManager *users() const;
+    [[nodiscard]] PermissionManager *permissions() const;
 
     [[nodiscard]] ConnectionState state() const;
 
@@ -46,6 +48,12 @@ private:
     MessageManager *messageManager;
     UserManager *userManager;
     Discord::Client *client;
+    PermissionManager *permissionManager;
+
+    Storage::RoleRepository roleRepo;
+    Storage::GuildRepository guildRepo;
+    Storage::ChannelRepository channelRepo;
+    Storage::MemberRepository memberRepo;
 };
 
 } // namespace Core

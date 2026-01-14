@@ -60,6 +60,7 @@ public:
 signals:
     void stateChanged(Core::ConnectionState state);
     void ready(const Ready &data);
+    void readySupplemental(const ReadySupplemental &data);
     void messageCreated(const Message &msg);
     void typingStart(const TypingStart &event);
     void messageSendFailed(const QString &nonce, const QString &error);
@@ -71,6 +72,7 @@ private slots:
     void onDisconnected(CloseCode code, const QString &reason);
 
     void onGatewayReady(const Ready &data);
+    void onGatewayReadySupplemental(const ReadySupplemental &data);
     void onGatewayMessageCreate(const Message &msg);
 
 private:

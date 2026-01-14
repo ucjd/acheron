@@ -3,6 +3,9 @@
 #include "DatabaseManager.hpp"
 #include "Core/Logging.hpp"
 
+#include <QSqlQuery>
+#include <QSqlError>
+
 namespace Acheron {
 namespace Storage {
 GuildRepository::GuildRepository(Core::Snowflake accountId)
@@ -27,6 +30,28 @@ void GuildRepository::saveGuild(const Discord::Guild &guild, QSqlDatabase &db)
     if (!q.exec()) {
         qCWarning(LogDB) << "GuildRepository: Save failed:" << q.lastError().text();
     }
+}
+
+std::optional<Discord::Guild> GuildRepository::getGuild(Core::Snowflake guildId)
+{
+    auto db = getDb();
+    QSqlQuery q(db);
+    q.prepare(R"(
+        SELECT id, name, icon, owner_id
+        FROM guilds WHERE id = :id
+    )");
+    q.bindValue(":id", static_cast<qint64>(guildId));
+
+    if (!q.exec() || !q.next())
+        return std::nullopt;
+
+    Discord::Guild guild;
+    guild.id = static_cast<Core::Snowflake>(q.value(0).toLongLong());
+    guild.name = q.value(1).toString();
+    guild.icon = q.value(2).toString();
+    guild.ownerId = static_cast<Core::Snowflake>(q.value(3).toLongLong());
+
+    return guild;
 }
 } // namespace Storage
 } // namespace Acheron
