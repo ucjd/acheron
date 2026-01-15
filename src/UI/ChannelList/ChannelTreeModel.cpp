@@ -1,5 +1,9 @@
 #include "ChannelTreeModel.hpp"
+
 #include <Core/ClientInstance.hpp>
+#include <Core/Logging.hpp>
+#include <Storage/DatabaseManager.hpp>
+#include <Storage/ChannelRepository.hpp>
 
 namespace Acheron {
 namespace UI {
@@ -107,12 +111,14 @@ QVariant ChannelTreeModel::data(const QModelIndex &index, int role) const
         return {};
     }
 
-    if (role == Qt::UserRole)
-        return (qulonglong)node->id;
-    if (role == Qt::UserRole + 1)
+    if (role == IdRole)
+        return static_cast<quint64>(node->id);
+    if (role == UnreadCountRole)
         return node->unreadCount;
-    if (role == Qt::UserRole + 2)
+    if (role == TypeRole)
         return static_cast<int>(node->type);
+    if (role == PositionRole)
+        return node->position;
 
     return {};
 }
@@ -284,6 +290,8 @@ std::unique_ptr<ChannelNode> ChannelTreeModel::createGuildNode(const Discord::Ga
             node->name = channel.name;
             node->type = ChannelNode::Type::Category;
             node->position = channel.position;
+            node->parentId =
+                    channel.parentId.hasValue() ? channel.parentId.get() : Core::Snowflake();
             categoryMap[channel.id] = node.get();
             categories.push_back(std::move(node));
         }
@@ -297,6 +305,8 @@ std::unique_ptr<ChannelNode> ChannelTreeModel::createGuildNode(const Discord::Ga
             node->name = channel.name;
             node->type = ChannelNode::Type::Channel;
             node->position = channel.position;
+            node->parentId =
+                    channel.parentId.hasValue() ? channel.parentId.get() : Core::Snowflake();
 
             if (channel.parentId.hasValue() && channel.parentId->isValid()) {
                 if (categoryMap.contains(channel.parentId.get()))
@@ -344,5 +354,126 @@ QModelIndex ChannelTreeModel::indexForNode(ChannelNode *node) const
     }
     return {};
 }
+
+ChannelNode *ChannelTreeModel::findChannelNode(Snowflake channelId, ChannelNode *searchRoot)
+{
+    if (!searchRoot)
+        return nullptr;
+
+    if (searchRoot->type == ChannelNode::Type::Channel && searchRoot->id == channelId)
+        return searchRoot;
+
+    for (const auto &child : searchRoot->children) {
+        if (ChannelNode *found = findChannelNode(channelId, child.get()))
+            return found;
+    }
+
+    return nullptr;
+}
+
+ChannelNode *ChannelTreeModel::findGuildNode(ChannelNode *node)
+{
+    while (node && node->type != ChannelNode::Type::Server)
+        node = node->parent;
+    return node;
+}
+
+ChannelNode *ChannelTreeModel::findCategoryNode(Snowflake categoryId, ChannelNode *guildNode)
+{
+    if (!guildNode || guildNode->type != ChannelNode::Type::Server)
+        return nullptr;
+
+    for (const auto &child : guildNode->children)
+        if (child->type == ChannelNode::Type::Category && child->id == categoryId)
+            return child.get();
+
+    return nullptr;
+}
+
+void ChannelTreeModel::updateChannel(const Discord::ChannelUpdate &update, Snowflake accountId)
+{
+    const auto &channel = update.channel.get();
+
+    ChannelNode *accNode = accountNodes.value(accountId, nullptr);
+    if (!accNode)
+        return;
+
+    ChannelNode *channelNode = findChannelNode(channel.id, accNode);
+    if (!channelNode)
+        return;
+
+    auto *instance = session->client(accountId);
+    if (!instance)
+        return;
+
+    Core::Snowflake oldParentId = channelNode->parentId;
+    Core::Snowflake newParentId =
+            channel.parentId.hasValue() ? channel.parentId.get() : Core::Snowflake();
+
+    bool parentChanged = oldParentId != newParentId;
+
+    if (parentChanged) {
+        ChannelNode *oldParent = channelNode->parent;
+        ChannelNode *guildNode = findGuildNode(channelNode);
+
+        if (!guildNode)
+            return;
+
+        QModelIndex oldParentIdx = indexForNode(oldParent);
+        int oldRow = -1;
+        for (size_t i = 0; i < oldParent->children.size(); ++i) {
+            if (oldParent->children[i].get() == channelNode) {
+                oldRow = i;
+                break;
+            }
+        }
+
+        if (oldRow == -1)
+            return;
+
+        beginRemoveRows(oldParentIdx, oldRow, oldRow);
+        auto node = std::move(oldParent->children[oldRow]);
+        oldParent->children.erase(oldParent->children.begin() + oldRow);
+        endRemoveRows();
+
+        node->name = channel.name.get();
+        node->position = channel.position.get();
+        node->parentId = newParentId;
+
+        ChannelNode *newParent = nullptr;
+        if (newParentId.isValid())
+            newParent = findCategoryNode(newParentId, guildNode);
+        else
+            newParent = guildNode;
+
+        if (!newParent) {
+            qCWarning(LogUI) << "Could not find new parent for channel:" << channel.id.get();
+            return;
+        }
+
+        // throw it wherever cuz the proxy will sort it
+        int insertRow = newParent->children.size();
+
+        QModelIndex newParentIdx = indexForNode(newParent);
+        beginInsertRows(newParentIdx, insertRow, insertRow);
+        node->parent = newParent;
+        newParent->children.push_back(std::move(node));
+        endInsertRows();
+
+        qCInfo(LogUI) << "Moved channel" << channel.id.get() << "from parent" << oldParentId << "to"
+                      << newParentId;
+    } else {
+        channelNode->name = channel.name.get();
+        channelNode->position = channel.position.get();
+        channelNode->parentId = newParentId;
+
+        QModelIndex idx = indexForNode(channelNode);
+        if (idx.isValid())
+            emit dataChanged(idx, idx, { Qt::DisplayRole, PositionRole });
+
+        qCDebug(LogUI) << "Updated channel tree node:" << channel.id.get();
+    }
+}
+
 } // namespace UI
 } // namespace Acheron

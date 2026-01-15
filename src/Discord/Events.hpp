@@ -73,5 +73,17 @@ struct TypingStart : Core::JsonUtils::JsonObject
     }
 };
 
+struct ChannelUpdate : Core::JsonUtils::JsonObject
+{
+    Field<Channel> channel;
+
+    static ChannelUpdate fromJson(const QJsonObject &obj)
+    {
+        ChannelUpdate update;
+        update.channel = Channel::fromJson(obj);
+        return update;
+    }
+};
+
 } // namespace Discord
 } // namespace Acheron

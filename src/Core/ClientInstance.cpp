@@ -1,5 +1,6 @@
 #include "ClientInstance.hpp"
 
+#include "Core/Logging.hpp"
 #include "Storage/DatabaseManager.hpp"
 #include "Storage/GuildRepository.hpp"
 #include "Storage/ChannelRepository.hpp"
@@ -102,6 +103,34 @@ ClientInstance::ClientInstance(const AccountInfo &info, QObject *parent)
             &MessageManager::onMessageCreated);
     connect(client, &Discord::Client::messageSendFailed, messageManager,
             &MessageManager::onMessageSendFailed);
+    connect(client, &Discord::Client::channelUpdated, this, &ClientInstance::onChannelUpdated);
+}
+
+void ClientInstance::onChannelUpdated(const Discord::ChannelUpdate &event)
+{
+    if (!event.channel.hasValue())
+        return;
+
+    const Discord::Channel &channel = event.channel.get();
+    Core::Snowflake channelId = channel.id.get();
+
+    qCDebug(LogCore) << "Channel updated:" << channelId;
+
+    QString connName = Storage::DatabaseManager::instance().getCacheConnectionName(account.id);
+    QSqlDatabase db = QSqlDatabase::database(connName);
+
+    db.transaction();
+
+    channelRepo.saveChannel(channel, db);
+
+    if (channel.permissionOverwrites.hasValue())
+        channelRepo.savePermissionOverwrites(channelId, channel.permissionOverwrites.get(), db);
+
+    db.commit();
+
+    permissionManager->invalidateChannelCache(channelId);
+
+    emit channelUpdated(event);
 }
 
 ClientInstance::~ClientInstance()

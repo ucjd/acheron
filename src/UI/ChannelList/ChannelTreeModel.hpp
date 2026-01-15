@@ -20,6 +20,13 @@ class ChannelTreeModel : public QAbstractItemModel
 public:
     ChannelTreeModel(Session *session, QObject *parent = nullptr);
 
+    enum Roles {
+        IdRole = Qt::UserRole,
+        UnreadCountRole = Qt::UserRole + 1,
+        TypeRole = Qt::UserRole + 2,
+        PositionRole = Qt::UserRole + 3,
+    };
+
     QModelIndex index(int row, int column, const QModelIndex &parentIndex) const override;
     QModelIndex parent(const QModelIndex &childIndex) const override;
     int rowCount(const QModelIndex &parentIndex) const override;
@@ -34,10 +41,15 @@ public:
 
     ChannelNode *getAccountNodeFor(ChannelNode *node);
 
-private:
     ChannelNode *nodeFromIndex(const QModelIndex &index) const;
+    void updateChannel(const Discord::ChannelUpdate &update, Snowflake accountId);
+
+private:
     QModelIndex indexForNode(ChannelNode *node) const;
     std::unique_ptr<ChannelNode> createGuildNode(const Discord::GatewayGuild &guild);
+    ChannelNode *findChannelNode(Snowflake channelId, ChannelNode *root);
+    ChannelNode *findGuildNode(ChannelNode *node);
+    ChannelNode *findCategoryNode(Snowflake categoryId, ChannelNode *guildNode);
 
 private:
     Session *session;

@@ -113,5 +113,19 @@ Discord::Permissions PermissionManager::computeChannelPermissions(Snowflake user
             guild.ownerId.get(), userId, guildId, false, memberRoleIds, allRoles, overwrites);
 }
 
+void PermissionManager::invalidateChannelCache(Snowflake channelId)
+{
+    auto it = permissionCache.begin();
+    while (it != permissionCache.end()) {
+        if (it.key().second == channelId)
+            it = permissionCache.erase(it);
+        else
+            ++it;
+    }
+
+    qCDebug(LogCore) << "Invalidated permission cache for channel:" << channelId;
+    emit channelPermissionsChanged(channelId);
+}
+
 } // namespace Core
 } // namespace Acheron

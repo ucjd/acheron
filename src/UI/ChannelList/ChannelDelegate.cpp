@@ -1,6 +1,7 @@
 #include "ChannelDelegate.hpp"
 
 #include "ChannelNode.hpp"
+#include "ChannelTreeModel.hpp"
 
 namespace Acheron {
 namespace UI {
@@ -97,7 +98,7 @@ void ChannelDelegate::paint(QPainter *painter, const QStyleOptionViewItem &optio
                                              option.widget);
     }
 
-    int unreadCount = index.data(Qt::UserRole + 1).toInt();
+    int unreadCount = index.data(ChannelTreeModel::UnreadCountRole).toInt();
     if (unreadCount > 0) {
         // todo ugly
         QRect badgeRect(option.rect.right() - 20, option.rect.top() + 4, 16, 16);

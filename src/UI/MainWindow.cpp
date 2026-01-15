@@ -28,6 +28,8 @@ MainWindow::MainWindow(Session *session, QWidget *parent) : QMainWindow(parent),
     channelTreeModel = new ChannelTreeModel(session, this);
     channelFilterProxy = new ChannelFilterProxyModel(session, this);
     channelFilterProxy->setSourceModel(channelTreeModel);
+    channelFilterProxy->setDynamicSortFilter(true);
+    channelFilterProxy->sort(0);
     accountsModel = new AccountsModel(session, this);
 
     chatModel->setAvatarUrlResolver([this](const Discord::User &user) -> QUrl {
@@ -49,8 +51,8 @@ MainWindow::MainWindow(Session *session, QWidget *parent) : QMainWindow(parent),
             [this](const Discord::Ready &ready) { channelTreeModel->populateFromReady(ready); });
 
     connect(accountsModel, &AccountsModel::dataChanged, this,
-            [this](const QModelIndex &topLeft, const QModelIndex &bottomRight,
-                   const QVector<int> &roles) {
+            [this, session](const QModelIndex &topLeft, const QModelIndex &bottomRight,
+                            const QVector<int> &roles) {
                 for (int row = topLeft.row(); row <= bottomRight.row(); ++row) {
                     QModelIndex idx = accountsModel->index(row, 0);
                     auto accPtr = idx.data(AccountsModel::AccountObjectRole).value<void *>();
@@ -61,9 +63,13 @@ MainWindow::MainWindow(Session *session, QWidget *parent) : QMainWindow(parent),
                     if (acc.state == Acheron::Core::ConnectionState::Connected) {
                         channelTreeModel->addAccount(acc);
 
+                        ClientInstance *instance = session->client(acc.id);
+                        if (instance)
+                            setupPermanentConnections(instance);
+
                         for (int i = 0; i < channelFilterProxy->rowCount(QModelIndex()); ++i) {
                             QModelIndex proxyIdx = channelFilterProxy->index(i, 0, QModelIndex());
-                            if (proxyIdx.data(Qt::UserRole).toULongLong() == acc.id) {
+                            if (proxyIdx.data(ChannelTreeModel::IdRole).toULongLong() == acc.id) {
                                 channelTree->expand(proxyIdx);
                                 break;
                             }
@@ -73,6 +79,11 @@ MainWindow::MainWindow(Session *session, QWidget *parent) : QMainWindow(parent),
                     }
                 }
             });
+
+    for (const auto &instance : session->getClients()) {
+        if (instance)
+            setupPermanentConnections(instance);
+    }
 }
 
 void MainWindow::closeEvent(QCloseEvent *event)
@@ -144,6 +155,7 @@ void MainWindow::switchActiveInstance(Core::ClientInstance *newInstance)
         disconnect(msgs, nullptr, chatModel, nullptr);
         disconnect(msgs, nullptr, this, nullptr);
         disconnect(currentInstance->discord(), &Discord::Client::typingStart, this, nullptr);
+        disconnect(currentInstance->permissions(), nullptr, this, nullptr);
     }
 
     currentInstance = newInstance;
@@ -167,6 +179,20 @@ void MainWindow::switchActiveInstance(Core::ClientInstance *newInstance)
     connect(currentInstance->discord(), &Discord::Client::messageCreated, this,
             [this](const Discord::Message &msg) {
                 typingTracker->removeTyper(msg.channelId, msg.author->id);
+            });
+
+    connect(currentInstance->permissions(), &Core::PermissionManager::channelPermissionsChanged,
+            this, &MainWindow::onChannelPermissionsChanged);
+}
+
+void MainWindow::setupPermanentConnections(Core::ClientInstance *instance)
+{
+    if (!instance)
+        return;
+
+    connect(instance, &Core::ClientInstance::channelUpdated, this,
+            [this, instance](const Discord::ChannelUpdate &update) {
+                channelTreeModel->updateChannel(update, instance->accountId());
             });
 }
 
@@ -283,6 +309,34 @@ void MainWindow::onTypingStart(const Discord::TypingStart &event)
             event.guildId.hasValue() ? std::optional(event.guildId.get()) : std::nullopt;
 
     typingTracker->addTyper(event.channelId.get(), event.userId.get(), guildId);
+}
+
+void MainWindow::onChannelPermissionsChanged(Core::Snowflake channelId)
+{
+    if (chatModel->getActiveChannelId() != channelId)
+        return;
+
+    if (!currentInstance)
+        return;
+
+    QModelIndex current = channelTree->currentIndex();
+    if (!current.isValid())
+        return;
+
+    ChannelNode *node = channelTreeModel->nodeFromIndex(channelFilterProxy->mapToSource(current));
+    if (!node || node->type != ChannelNode::Type::Channel)
+        return;
+
+    Core::Snowflake userId = currentInstance->accountId();
+    bool canSend = currentInstance->permissions()->hasChannelPermission(
+            userId, channelId, Discord::Permission::SEND_MESSAGES);
+
+    messageInput->setEnabled(canSend);
+
+    if (canSend)
+        messageInput->setPlaceholder(node->name);
+    else
+        messageInput->setPlaceholder("You do not have permission to send messages");
 }
 
 } // namespace UI

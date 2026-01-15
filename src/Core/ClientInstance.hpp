@@ -39,8 +39,10 @@ signals:
     void detailsUpdated(const AccountInfo &info);
 
     void ready(const Discord::Ready &ready);
+    void channelUpdated(const Discord::ChannelUpdate &update);
 
 private slots:
+    void onChannelUpdated(const Discord::ChannelUpdate &event);
 
 private:
     AccountInfo account;

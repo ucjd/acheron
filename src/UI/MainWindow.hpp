@@ -1,5 +1,7 @@
 #pragma once
 #include <QtWidgets>
+
+#include <Core/Snowflake.hpp>
 #include "Input/MessageInput.hpp"
 
 namespace Acheron {
@@ -37,9 +39,11 @@ protected:
 private slots:
     void onChannelSelectionChanged(const QModelIndex &current, const QModelIndex &previous);
     void onTypingStart(const Discord::TypingStart &event);
+    void onChannelPermissionsChanged(Core::Snowflake channelId);
 
 private:
     void switchActiveInstance(Core::ClientInstance *instance);
+    void setupPermanentConnections(Core::ClientInstance *instance);
 
 private:
     void setupUi();

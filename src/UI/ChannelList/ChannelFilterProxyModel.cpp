@@ -25,6 +25,28 @@ void ChannelFilterProxyModel::invalidateFilter()
     QSortFilterProxyModel::invalidateFilter();
 }
 
+bool ChannelFilterProxyModel::lessThan(const QModelIndex &left, const QModelIndex &right) const
+{
+    auto leftType = static_cast<ChannelNode::Type>(left.data(ChannelTreeModel::TypeRole).toInt());
+    auto rightType = static_cast<ChannelNode::Type>(right.data(ChannelTreeModel::TypeRole).toInt());
+
+    if ((leftType == ChannelNode::Type::Channel || leftType == ChannelNode::Type::Category) &&
+        (rightType == ChannelNode::Type::Channel || rightType == ChannelNode::Type::Category)) {
+
+        if (leftType == ChannelNode::Type::Channel && rightType == ChannelNode::Type::Category)
+            return true;
+        else if (leftType == ChannelNode::Type::Category && rightType == ChannelNode::Type::Channel)
+            return false;
+
+        int leftPos = left.data(ChannelTreeModel::PositionRole).toInt();
+        int rightPos = right.data(ChannelTreeModel::PositionRole).toInt();
+        return leftPos < rightPos;
+    }
+
+    // preserve underlying
+    return left.row() < right.row();
+}
+
 bool ChannelFilterProxyModel::filterAcceptsRow(int sourceRow, const QModelIndex &sourceParent) const
 {
     if (!channelModel)
@@ -34,7 +56,7 @@ bool ChannelFilterProxyModel::filterAcceptsRow(int sourceRow, const QModelIndex 
     if (!index.isValid())
         return true;
 
-    auto nodeType = static_cast<ChannelNode::Type>(index.data(Qt::UserRole + 2).toInt());
+    auto nodeType = static_cast<ChannelNode::Type>(index.data(ChannelTreeModel::TypeRole).toInt());
 
     if (nodeType == ChannelNode::Type::Channel) {
         Core::Snowflake userId = getUserIdForNode(index);
@@ -49,7 +71,8 @@ bool ChannelFilterProxyModel::filterAcceptsRow(int sourceRow, const QModelIndex 
         if (!permissionManager)
             return true;
 
-        Core::Snowflake channelId = Core::Snowflake(index.data(Qt::UserRole).toULongLong());
+        Core::Snowflake channelId =
+                Core::Snowflake(index.data(ChannelTreeModel::IdRole).toULongLong());
         return permissionManager->hasChannelPermission(userId, channelId,
                                                        Discord::Permission::VIEW_CHANNEL);
     }
@@ -82,9 +105,10 @@ Core::Snowflake ChannelFilterProxyModel::getUserIdForNode(const QModelIndex &ind
 
     QModelIndex current = index;
     while (current.isValid()) {
-        auto nodeType = static_cast<ChannelNode::Type>(current.data(Qt::UserRole + 2).toInt());
+        auto nodeType =
+                static_cast<ChannelNode::Type>(current.data(ChannelTreeModel::TypeRole).toInt());
         if (nodeType == ChannelNode::Type::Account)
-            return Core::Snowflake(current.data(Qt::UserRole).toULongLong());
+            return Core::Snowflake(current.data(ChannelTreeModel::IdRole).toULongLong());
         current = current.parent();
     }
 

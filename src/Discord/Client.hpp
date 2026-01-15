@@ -63,6 +63,7 @@ signals:
     void readySupplemental(const ReadySupplemental &data);
     void messageCreated(const Message &msg);
     void typingStart(const TypingStart &event);
+    void channelUpdated(const ChannelUpdate &event);
     void messageSendFailed(const QString &nonce, const QString &error);
 
     void errorOccurred(const QString &errorStr);
@@ -74,6 +75,7 @@ private slots:
     void onGatewayReady(const Ready &data);
     void onGatewayReadySupplemental(const ReadySupplemental &data);
     void onGatewayMessageCreate(const Message &msg);
+    void onGatewayChannelUpdate(const ChannelUpdate &event);
 
 private:
     void setState(Core::ConnectionState state);

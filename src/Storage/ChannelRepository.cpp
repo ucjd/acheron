@@ -19,7 +19,7 @@ void ChannelRepository::saveChannel(const Discord::Channel &channel, QSqlDatabas
     QSqlQuery q(db);
 
     q.prepare(R"(
-		INSERT INTO channels
+		INSERT OR REPLACE INTO channels
 		(id, type, position, name, guild_id, parent_id)
 		VALUES (:id, :type, :position, :name, :guild_id, :parent_id)
     )");

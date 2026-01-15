@@ -165,6 +165,9 @@ void Gateway::handleDispatch(const Inbound &data)
     case GatewayEvent::TYPING_START:
         handleTypingStart(data);
         break;
+    case GatewayEvent::CHANNEL_UPDATE:
+        handleChannelUpdate(data);
+        break;
     case GatewayEvent::UNKNOWN:
         qCInfo(LogDiscord) << "Unknown gateway event: " << t;
         break;
@@ -203,6 +206,13 @@ void Gateway::handleTypingStart(const Inbound &data)
     TypingStart event = data.getData<TypingStart>();
 
     emit gatewayTypingStart(event);
+}
+
+void Gateway::handleChannelUpdate(const Inbound &data)
+{
+    ChannelUpdate event = data.getData<ChannelUpdate>();
+
+    emit gatewayChannelUpdate(event);
 }
 
 void Gateway::handleHello(const Inbound &data)

@@ -127,6 +127,7 @@ enum class GatewayEvent {
     READY_SUPPLEMENTAL,
     MESSAGE_CREATE,
     TYPING_START,
+    CHANNEL_UPDATE,
 };
 
 inline GatewayEvent parseGatewayEvent(const QString &event)
@@ -136,6 +137,7 @@ inline GatewayEvent parseGatewayEvent(const QString &event)
         { "READY_SUPPLEMENTAL", GatewayEvent::READY_SUPPLEMENTAL },
         { "MESSAGE_CREATE", GatewayEvent::MESSAGE_CREATE },
         { "TYPING_START", GatewayEvent::TYPING_START },
+        { "CHANNEL_UPDATE", GatewayEvent::CHANNEL_UPDATE },
     };
 
     return events.value(event, GatewayEvent::UNKNOWN);

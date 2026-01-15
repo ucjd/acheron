@@ -26,6 +26,7 @@ public:
     void connectAccount(Snowflake accountId);
     void disconnectAccount(Snowflake accountId);
 
+    [[nodiscard]] QList<ClientInstance *> getClients() const { return clients.values(); }
     [[nodiscard]] ClientInstance *client(Snowflake accountId) const;
     [[nodiscard]] AccountInfo getAccountInfo(Snowflake accountId);
     [[nodiscard]] ImageManager *getImageManager() { return imageManager; }

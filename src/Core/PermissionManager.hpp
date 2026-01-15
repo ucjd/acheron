@@ -31,6 +31,11 @@ public:
                                     const QList<Discord::Role> &roles,
                                     const QList<Discord::Channel> &channels, Snowflake userId);
 
+    void invalidateChannelCache(Snowflake channelId);
+
+signals:
+    void channelPermissionsChanged(Snowflake channelId);
+
 private:
     Discord::Permissions computeChannelPermissions(Snowflake userId, Snowflake channelId);
 
@@ -39,7 +44,8 @@ private:
     Storage::ChannelRepository channelRepo;
     Storage::MemberRepository memberRepo;
 
-    QHash<QPair<Snowflake, Snowflake>, Discord::Permissions> permissionCache;
+    QHash<QPair<Snowflake /* userId */, Snowflake /* channelId */>, Discord::Permissions>
+            permissionCache;
 };
 
 } // namespace Core
