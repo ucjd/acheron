@@ -100,6 +100,19 @@ QString Parser::toHtml(const QList<AstNode> &nodes)
 {
     QString result;
     for (const auto &node : nodes) {
+        // todo i dont really like this. i think this should still belong in MarkdownRule somehow. its ok for now
+        if (node.type == "user") {
+            QString displayName;
+            if (userResolver)
+                displayName = userResolver(node.content);
+            else
+                displayName = node.content;
+
+            result += QString("<span style=\"background-color: rgba(88, 101, 242, 0.3); color: #c9cdfb;\">@%1</span>")
+                              .arg(displayName.toHtmlEscaped());
+            continue;
+        }
+
         if (ruleMap.contains(node.type) && ruleMap[node.type]->html) {
             auto renderChildren = [this](const QList<AstNode> &children) {
                 return this->toHtml(children);
@@ -110,6 +123,11 @@ QString Parser::toHtml(const QList<AstNode> &nodes)
         }
     }
     return result;
+}
+
+void Parser::setUserResolver(UserResolverFn resolver)
+{
+    userResolver = std::move(resolver);
 }
 
 static MatchFn inlineRegex(QRegularExpression regex)
@@ -239,6 +257,20 @@ void Parser::setupDefaultRules()
     em.quality = [](const Capture &match, const ParseState &state,
                     const QString &prevCapture) -> double { return match.capturedLength() + 0.2; };
     rules.append(em);
+
+    MarkdownRule user;
+    user.name = "user";
+    user.order = 21;
+    user.regex = QRegularExpression(R"(^<@!?([0-9]*)>)");
+    user.match = anyScopeRegex(user.regex);
+    user.parse = [](const Capture &match, NestedParseFn nestedParse, ParseState state) -> AstNode {
+        AstNode node;
+        node.type = "user";
+        node.content = match.captured(1);
+        return node;
+    };
+    // .html handled in toHtml() because of user resolution
+    rules.append(user);
 
     MarkdownRule strong;
     strong.name = "strong";

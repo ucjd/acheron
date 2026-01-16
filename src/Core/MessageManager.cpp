@@ -5,14 +5,21 @@
 #include "Discord/Client.hpp"
 #include "Markdown/Parser.hpp"
 #include "Logging.hpp"
+#include "UserManager.hpp"
 
 namespace Acheron {
 namespace Core {
 
-MessageManager::MessageManager(Snowflake accountId, Discord::Client *client, QObject *parent)
-    : QObject(parent), client(client), repo(accountId)
+MessageManager::MessageManager(Snowflake accountId, Discord::Client *client,
+                               UserManager *userManager, QObject *parent)
+    : QObject(parent), client(client), userManager(userManager), repo(accountId), parser(std::make_unique<Markdown::Parser>())
 {
     messageCache.setMaxCost(1'000);
+
+    parser->setUserResolver([this](const QString &userId) {
+        Snowflake id(userId.toULongLong());
+        return this->userManager->getDisplayName(id);
+    });
 
     // connect(client, &Discord::Client::messagesReceived, this, &MessageManager::onApiMessagesReceived);
     // connect(client, &Discord::Client::messagesFailed, this, &MessageManager::onMessagesFailed);
@@ -59,11 +66,10 @@ void MessageManager::requestLoadChannel(Snowflake channelId)
         QList<Discord::Message> msgs = repo.getLatestMessages(channelId, 50);
         if (!msgs.isEmpty()) { // probably good
             for (auto &msg : msgs) {
-                static Markdown::Parser parser;
                 Markdown::ParseState state;
                 state.isInline = true;
-                auto ast = parser.parse(msg.content, state);
-                msg.parsedContentCached = parser.toHtml(ast);
+                auto ast = parser->parse(msg.content, state);
+                msg.parsedContentCached = parser->toHtml(ast);
             }
 
             emit messagesReceived({
@@ -150,11 +156,10 @@ void MessageManager::requestLoadHistory(Snowflake channelId, Snowflake beforeId)
         QList<Discord::Message> msgs = repo.getMessagesBefore(channelId, beforeId, 50);
 
         for (auto &msg : msgs) {
-            static Markdown::Parser parser;
             Markdown::ParseState state;
             state.isInline = true;
-            auto ast = parser.parse(msg.content, state);
-            msg.parsedContentCached = parser.toHtml(ast);
+            auto ast = parser->parse(msg.content, state);
+            msg.parsedContentCached = parser->toHtml(ast);
         }
 
         if (!msgs.isEmpty()) { // probably good
@@ -235,11 +240,10 @@ void MessageManager::sendMessage(Snowflake channelId, const QString &content)
     preview.flags = Discord::MessageFlags(0);
     preview.isPendingOutbound = true;
 
-    static Markdown::Parser parser;
     Markdown::ParseState state;
     state.isInline = true;
-    auto ast = parser.parse(content, state);
-    preview.parsedContentCached = parser.toHtml(ast);
+    auto ast = parser->parse(content, state);
+    preview.parsedContentCached = parser->toHtml(ast);
 
     // get our fake preview in
     emit messagesReceived(
@@ -269,11 +273,10 @@ void MessageManager::onApiMessagesReceived(const QList<Discord::Message> &messag
     }
 
     for (auto &msg : sortedMessages) {
-        static Markdown::Parser parser;
         Markdown::ParseState state;
         state.isInline = true;
-        auto ast = parser.parse(msg.content, state);
-        msg.parsedContentCached = parser.toHtml(ast);
+        auto ast = parser->parse(msg.content, state);
+        msg.parsedContentCached = parser->toHtml(ast);
     }
 
     for (const auto &msg : sortedMessages) {

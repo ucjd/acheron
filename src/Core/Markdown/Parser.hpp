@@ -46,6 +46,8 @@ struct MarkdownRule
     QualityFn quality = nullptr;
 };
 
+using UserResolverFn = std::function<QString(const QString &userId)>;
+
 class Parser
 {
 public:
@@ -54,6 +56,8 @@ public:
     QList<AstNode> parse(QString source, ParseState state = {});
     QString toHtml(const QList<AstNode> &nodes);
 
+    void setUserResolver(UserResolverFn resolver);
+
 private:
     void setupDefaultRules();
     void sortRules();
@@ -61,6 +65,7 @@ private:
 private:
     QList<MarkdownRule> rules;
     QMap<QString, MarkdownRule *> ruleMap;
+    UserResolverFn userResolver;
 };
 
 } // namespace Markdown

@@ -18,11 +18,11 @@ ClientInstance::ClientInstance(const AccountInfo &info, QObject *parent)
       memberRepo(info.id)
 {
     client = new Discord::Client(info.token, info.gatewayUrl, info.restUrl, this);
-    messageManager = new MessageManager(info.id, client, this);
 
     Storage::DatabaseManager::instance().openCacheDatabase(info.id);
 
     userManager = new UserManager(info.id, this);
+    messageManager = new MessageManager(info.id, client, userManager, this);
 
     permissionManager = new PermissionManager(info.id, this);
 

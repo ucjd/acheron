@@ -1,14 +1,21 @@
 #pragma once
 
 #include <deque>
+#include <memory>
 
 #include "Snowflake.hpp"
 #include "Storage/MessageRepository.hpp"
 #include "Discord/Entities.hpp"
 #include "Discord/Client.hpp"
 
+namespace Acheron::Core::Markdown {
+class Parser;
+}
+
 namespace Acheron {
 namespace Core {
+
+class UserManager;
 
 struct MessageRequestResult
 {
@@ -24,7 +31,7 @@ class MessageManager : public QObject
     Q_OBJECT
 public:
     explicit MessageManager(Snowflake accountId, Discord::Client *client,
-                            QObject *parent = nullptr);
+                            UserManager *userManager, QObject *parent = nullptr);
     ~MessageManager() override;
 
     void requestLoadChannel(Snowflake channelId);
@@ -50,6 +57,8 @@ private:
     Storage::MessageRepository repo;
 
     Discord::Client *client;
+    UserManager *userManager;
+    std::unique_ptr<Markdown::Parser> parser;
 
     QCache<Snowflake, Discord::Message> messageCache;
     QHash<Snowflake, std::deque<Snowflake>> channelMessages;
