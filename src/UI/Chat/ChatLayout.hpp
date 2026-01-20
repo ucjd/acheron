@@ -200,6 +200,7 @@ std::optional<EmbedHitResult> getEmbedAt(const QAbstractItemView *view, const QM
 QString formatFileSize(qint64 bytes);
 
 void drawCroppedPixmap(QPainter *painter, const QRect &targetRect, const QPixmap &pixmap);
+QPixmap createBlurredPixmap(const QPixmap &source, int blurRadius = 30);
 
 } // namespace ChatLayout
 } // namespace UI

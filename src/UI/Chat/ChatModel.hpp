@@ -15,6 +15,7 @@ class AttachmentCache;
 
 struct AttachmentData
 {
+    Snowflake id;
     QUrl proxyUrl;
     QUrl originalUrl;
     QSize displaySize;
@@ -23,6 +24,7 @@ struct AttachmentData
     bool isImage;
     QString filename;
     qint64 fileSizeBytes;
+    bool isSpoiler;
 };
 
 struct EmbedFieldData
@@ -132,12 +134,14 @@ public:
 
     [[nodiscard]] Snowflake getOldestMessageId() const;
     [[nodiscard]] Snowflake getActiveChannelId() const;
+    [[nodiscard]] bool isSpoilerRevealed(Snowflake attachmentId) const;
 
 public slots:
     void setActiveChannel(Snowflake channelId, Snowflake guildId = Snowflake::Invalid);
     void handleIncomingMessages(const Core::MessageRequestResult &result);
     void handleMessageErrored(const QString &nonce);
     void refreshUsersInView(const QList<Snowflake> &userIds);
+    void revealSpoiler(Snowflake attachmentId);
 
     void triggerResize(int row)
     {
@@ -165,6 +169,7 @@ private:
     mutable QMultiMap<QUrl, QPersistentModelIndex> pendingRequests;
     QSet<QString> pendingNonces;
     QSet<QString> erroredNonces;
+    mutable QSet<Snowflake> revealedSpoilers;
 };
 } // namespace UI
 } // namespace Acheron

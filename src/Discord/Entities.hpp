@@ -334,6 +334,7 @@ struct Attachment : Core::JsonUtils::JsonObject
     Field<QString> proxyUrl;
     Field<int, true> width;
     Field<int, true> height;
+    Field<AttachmentFlags, true> flags;
 
     static Attachment fromJson(const QJsonObject &obj)
     {
@@ -346,6 +347,7 @@ struct Attachment : Core::JsonUtils::JsonObject
         get(obj, "proxy_url", att.proxyUrl);
         get(obj, "width", att.width);
         get(obj, "height", att.height);
+        get(obj, "flags", att.flags);
         return att;
     }
 
@@ -354,6 +356,11 @@ struct Attachment : Core::JsonUtils::JsonObject
         if (!contentType.hasValue())
             return false;
         return contentType->startsWith("image/");
+    }
+
+    bool isSpoiler() const
+    {
+        return flags.hasValue() && flags->testFlag(AttachmentFlag::IS_SPOILER);
     }
 };
 

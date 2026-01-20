@@ -181,6 +181,15 @@ void ChatView::mouseReleaseEvent(QMouseEvent *event)
         std::optional<AttachmentData> att = ChatLayout::getAttachmentAt(this, idx, pos);
         if (att.has_value()) {
             if (att->isImage) {
+                if (att->isSpoiler) {
+                    ChatModel *chatModel = qobject_cast<ChatModel *>(model());
+                    if (chatModel && !chatModel->isSpoilerRevealed(att->id)) {
+                        chatModel->revealSpoiler(att->id);
+                        QListView::mouseReleaseEvent(event);
+                        return;
+                    }
+                }
+
                 auto *viewer = new ImageViewer(window());
                 viewer->showImage(att->proxyUrl, att->pixmap);
                 QListView::mouseReleaseEvent(event);

@@ -1,5 +1,8 @@
 #include "ChatLayout.hpp"
 #include <QPainter>
+#include <QGraphicsBlurEffect>
+#include <QGraphicsScene>
+#include <QGraphicsPixmapItem>
 
 namespace Acheron {
 namespace UI {
@@ -941,6 +944,32 @@ std::optional<EmbedHitResult> getEmbedAt(const QAbstractItemView *view, const QM
     }
 
     return std::nullopt;
+}
+
+QPixmap createBlurredPixmap(const QPixmap &source, int blurRadius)
+{
+    if (source.isNull())
+        return source;
+
+    QGraphicsScene scene;
+    QGraphicsPixmapItem item(source);
+
+    QGraphicsBlurEffect *blur = new QGraphicsBlurEffect;
+    blur->setBlurRadius(blurRadius);
+    blur->setBlurHints(QGraphicsBlurEffect::PerformanceHint);
+    item.setGraphicsEffect(blur);
+
+    scene.addItem(&item);
+
+    QPixmap result(source.size());
+    result.setDevicePixelRatio(source.devicePixelRatio());
+    result.fill(Qt::transparent);
+
+    QPainter painter(&result);
+    scene.render(&painter);
+    painter.end();
+
+    return result;
 }
 
 } // namespace ChatLayout

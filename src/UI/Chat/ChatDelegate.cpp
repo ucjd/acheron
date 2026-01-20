@@ -165,6 +165,8 @@ void ChatDelegate::paint(QPainter *painter, const QStyleOptionViewItem &option,
 
     QList<AttachmentData> attachments = ctx.attachments;
 
+    const ChatModel *chatModel = qobject_cast<const ChatModel *>(index.model());
+
     for (const auto &imgLayout : layout.imageLayouts) {
         if (imgLayout.index >= attachments.size())
             continue;
@@ -175,15 +177,35 @@ void ChatDelegate::paint(QPainter *painter, const QStyleOptionViewItem &option,
                  std::count_if(attachments.begin(), attachments.end(),
                                [](const AttachmentData &a) { return a.isImage; }) == 1);
 
+        bool showBlurred = att.isSpoiler;
+        if (showBlurred && chatModel && chatModel->isSpoilerRevealed(att.id))
+            showBlurred = false;
+
         if (!att.pixmap.isNull()) {
+            QPixmap displayPixmap = att.pixmap;
+
+            if (showBlurred)
+                displayPixmap = ChatLayout::createBlurredPixmap(att.pixmap, 60);
+
             if (isSingleImage)
-                painter->drawPixmap(imgLayout.rect, att.pixmap);
+                painter->drawPixmap(imgLayout.rect, displayPixmap);
             else
-                ChatLayout::drawCroppedPixmap(painter, imgLayout.rect, att.pixmap);
+                ChatLayout::drawCroppedPixmap(painter, imgLayout.rect, displayPixmap);
+
+            if (showBlurred) {
+                painter->fillRect(imgLayout.rect, QColor(0, 0, 0, 100));
+
+                QFont spoilerFont = option.font;
+                spoilerFont.setBold(true);
+                spoilerFont.setPointSize(spoilerFont.pointSize() + 2);
+                painter->setFont(spoilerFont);
+                painter->setPen(Qt::white);
+                painter->drawText(imgLayout.rect, Qt::AlignCenter, tr("SPOILER"));
+            }
         } else {
             painter->fillRect(imgLayout.rect, QColor(60, 60, 60));
             painter->setPen(option.palette.text().color());
-            painter->drawText(imgLayout.rect, Qt::AlignCenter, "Loading...");
+            painter->drawText(imgLayout.rect, Qt::AlignCenter, tr("Loading..."));
         }
     }
 

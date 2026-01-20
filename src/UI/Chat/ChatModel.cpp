@@ -217,11 +217,13 @@ QVariant ChatModel::data(const QModelIndex &index, int role) const
         QList<AttachmentData> result;
         for (const auto &att : *msg.attachments) {
             AttachmentData data;
+            data.id = att.id;
             data.proxyUrl = QUrl(*att.proxyUrl);
             data.originalUrl = QUrl(*att.url);
             data.isImage = att.isImage();
             data.filename = att.filename.hasValue() ? *att.filename : "unknown";
             data.fileSizeBytes = att.size.hasValue() ? *att.size : 0;
+            data.isSpoiler = att.isSpoiler();
 
             if (att.isImage()) {
                 QSize original;
@@ -578,6 +580,7 @@ void ChatModel::setActiveChannel(Snowflake channelId, Snowflake guildId)
     embedCache.clear();
     pendingNonces.clear();
     erroredNonces.clear();
+    revealedSpoilers.clear();
     endResetModel();
 }
 
@@ -592,6 +595,32 @@ void ChatModel::refreshUsersInView(const QList<Snowflake> &userIds)
             emit dataChanged(idx, idx, { UsernameColorRole });
         }
     }
+}
+
+void ChatModel::revealSpoiler(Snowflake attachmentId)
+{
+    if (revealedSpoilers.contains(attachmentId))
+        return;
+
+    revealedSpoilers.insert(attachmentId);
+
+    for (int row = 0; row < messages.size(); ++row) {
+        const auto &msg = messages[row];
+        if (msg.attachments.hasValue()) {
+            for (const auto &att : *msg.attachments) {
+                if (*att.id == attachmentId) {
+                    QModelIndex idx = index(row, 0);
+                    emit dataChanged(idx, idx, { AttachmentsRole, CachedSizeRole });
+                    return;
+                }
+            }
+        }
+    }
+}
+
+bool ChatModel::isSpoilerRevealed(Snowflake attachmentId) const
+{
+    return revealedSpoilers.contains(attachmentId);
 }
 
 } // namespace UI

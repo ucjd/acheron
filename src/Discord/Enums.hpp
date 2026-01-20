@@ -316,5 +316,18 @@ Q_DECLARE_OPERATORS_FOR_FLAGS(Permissions);
 constexpr Permissions ALL_PERMISSIONS = Permissions::fromInt(0xFFFFFFFFFFFFFFFFULL);
 constexpr Permissions NO_PERMISSIONS = Permissions::fromInt(0ULL);
 
+enum class AttachmentFlag {
+    IS_CLIP = 1 << 0,
+    IS_THUMBNAIL = 1 << 1,
+    IS_REMIX = 1 << 2,
+    IS_SPOILER = 1 << 3,
+    CONTAINS_EXPLICIT_MEDIA = 1 << 4,
+    IS_ANIMATED = 1 << 5,
+    CONTAINS_GORE_CONTENT = 1 << 6,
+    CONTAINS_SELF_HARM_CONTENT = 1 << 7,
+};
+Q_DECLARE_FLAGS(AttachmentFlags, AttachmentFlag);
+Q_DECLARE_OPERATORS_FOR_FLAGS(AttachmentFlags);
+
 } // namespace Discord
 } // namespace Acheron
