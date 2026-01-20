@@ -21,6 +21,13 @@ static ChatLayout::LayoutContext buildLayoutContext(const QStyleOptionViewItem &
     ctx.htmlContent = index.data(ChatModel::HtmlRole).toString();
     ctx.attachments = index.data(ChatModel::AttachmentsRole).value<QList<AttachmentData>>();
     ctx.embeds = index.data(ChatModel::EmbedsRole).value<QList<EmbedData>>();
+
+    QDateTime editedTime = index.data(ChatModel::EditedTimestampRole).toDateTime();
+    if (editedTime.isValid()) {
+        QColor editedColor = option.palette.text().color().darker(200);
+        ctx.htmlContent += QString(R"(<span style="color: %1"> (edited)</span>)").arg(editedColor.name());
+    }
+
     return ctx;
 }
 
@@ -32,7 +39,6 @@ void ChatDelegate::paint(QPainter *painter, const QStyleOptionViewItem &option,
     ChatLayout::LayoutContext ctx = buildLayoutContext(option, index);
     ChatLayout::MessageLayout layout = ChatLayout::calculateMessageLayout(ctx);
 
-    const QString html = index.data(ChatModel::HtmlRole).toString();
     const QString username = index.data(ChatModel::UsernameRole).toString();
     const QPixmap avatar = qvariant_cast<QPixmap>(index.data(ChatModel::AvatarRole));
     const QDateTime timestamp = index.data(ChatModel::TimestampRole).toDateTime();
@@ -106,7 +112,7 @@ void ChatDelegate::paint(QPainter *painter, const QStyleOptionViewItem &option,
     }
 
     QTextDocument doc;
-    ChatLayout::setupDocument(doc, html, option.font, layout.textRect.width());
+    ChatLayout::setupDocument(doc, ctx.htmlContent, option.font, layout.textRect.width());
 
     painter->translate(layout.textRect.topLeft());
 

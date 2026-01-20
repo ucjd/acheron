@@ -223,7 +223,9 @@ protected:
             return value.toBool();
         } else if constexpr (std::is_same_v<T, QString>) {
             return value.toString();
-        } else if constexpr (std::is_enum_v<T> || QFlagType<T>) {
+        } else if constexpr (QFlagType<T>) {
+            return T::fromInt(value.toInt());
+        } else if constexpr (std::is_enum_v<T>) {
             return static_cast<T>(value.toInt());
         } else if constexpr (ListLike<T>) {
             using InnerType = typename T::value_type;

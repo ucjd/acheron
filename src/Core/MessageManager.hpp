@@ -44,6 +44,7 @@ signals:
 
 public slots:
     void onMessageCreated(const Discord::Message &message);
+    void onMessageUpdated(const Discord::Message &message);
     void onMessageSendFailed(const QString &nonce, const QString &error);
 
 private slots:

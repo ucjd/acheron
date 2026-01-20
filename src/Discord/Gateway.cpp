@@ -162,6 +162,9 @@ void Gateway::handleDispatch(const Inbound &data)
     case GatewayEvent::MESSAGE_CREATE:
         handleMessageCreate(data);
         break;
+    case GatewayEvent::MESSAGE_UPDATE:
+        handleMessageUpdate(data);
+        break;
     case GatewayEvent::TYPING_START:
         handleTypingStart(data);
         break;
@@ -202,6 +205,13 @@ void Gateway::handleMessageCreate(const Inbound &data)
     Message msg = data.getData<Message>();
 
     emit gatewayMessageCreate(msg);
+}
+
+void Gateway::handleMessageUpdate(const Inbound &data)
+{
+    Message msg = data.getData<Message>();
+
+    emit gatewayMessageUpdate(msg);
 }
 
 void Gateway::handleTypingStart(const Inbound &data)

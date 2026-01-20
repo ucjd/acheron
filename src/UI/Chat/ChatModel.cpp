@@ -165,6 +165,8 @@ QVariant ChatModel::data(const QModelIndex &index, int role) const
     }
     case TimestampRole:
         return msg.timestamp;
+    case EditedTimestampRole:
+        return msg.editedTimestamp.hasValue() ? QVariant(*msg.editedTimestamp) : QVariant();
     case UserIdRole:
         return msg.author->id;
     case CachedSizeRole: {
@@ -514,6 +516,27 @@ void ChatModel::handleIncomingMessages(const Core::MessageRequestResult &result)
         break;
     }
     case Discord::Client::MessageLoadType::Created: {
+        bool isUpdate = false;
+        for (const auto &incomingMsg : incomingMessages) {
+            for (int i = 0; i < messages.size(); i++) {
+                // update
+                if (messages[i].id == incomingMsg.id) {
+                    messages[i] = incomingMsg;
+
+                    sizeCache.remove(incomingMsg.id);
+                    embedCache.remove(incomingMsg.id);
+
+                    QModelIndex idx = index(i, 0);
+                    emit dataChanged(idx, idx);
+                    isUpdate = true;
+                    break;
+                }
+            }
+        }
+
+        if (isUpdate)
+            break;
+
         // replace sent message by nonce
         bool replacedPreview = false;
         for (const auto &incomingMsg : incomingMessages) {

@@ -63,6 +63,7 @@ signals:
     void ready(const Ready &data);
     void readySupplemental(const ReadySupplemental &data);
     void messageCreated(const Message &msg);
+    void messageUpdated(const Message &msg);
     void typingStart(const TypingStart &event);
     void channelUpdated(const ChannelUpdate &event);
     void guildMembersChunk(const GuildMembersChunk &chunk);
@@ -77,6 +78,7 @@ private slots:
     void onGatewayReady(const Ready &data);
     void onGatewayReadySupplemental(const ReadySupplemental &data);
     void onGatewayMessageCreate(const Message &msg);
+    void onGatewayMessageUpdate(const Message &msg);
     void onGatewayChannelUpdate(const ChannelUpdate &event);
 
 private:

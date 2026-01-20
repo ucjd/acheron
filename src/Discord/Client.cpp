@@ -26,6 +26,7 @@ Client::Client(const QString &token, const QString &gatewayUrl, const QString &b
     connect(gateway, &Gateway::gatewayReady, this, &Client::onGatewayReady);
     connect(gateway, &Gateway::gatewayReadySupplemental, this, &Client::onGatewayReadySupplemental);
     connect(gateway, &Gateway::gatewayMessageCreate, this, &Client::onGatewayMessageCreate);
+    connect(gateway, &Gateway::gatewayMessageUpdate, this, &Client::onGatewayMessageUpdate);
     connect(gateway, &Gateway::gatewayTypingStart, this, &Client::typingStart);
     connect(gateway, &Gateway::gatewayChannelUpdate, this, &Client::onGatewayChannelUpdate);
     connect(gateway, &Gateway::gatewayGuildMembersChunk, this, &Client::guildMembersChunk);
@@ -140,6 +141,11 @@ void Client::onGatewayReadySupplemental(const ReadySupplemental &data)
 void Client::onGatewayMessageCreate(const Message &msg)
 {
     emit messageCreated(msg);
+}
+
+void Client::onGatewayMessageUpdate(const Message &msg)
+{
+    emit messageUpdated(msg);
 }
 
 void Client::onGatewayChannelUpdate(const ChannelUpdate &event)

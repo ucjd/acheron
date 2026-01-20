@@ -378,6 +378,10 @@ struct Message : Core::JsonUtils::JsonObject
     Field<QList<Attachment>, true> attachments;
     Field<QList<Embed>, true> embeds;
 
+    // TRANSIENT for MESSAGE_UPDATE
+    Field<Core::Snowflake, true> guildId;
+    Field<ChannelType, true> channelType;
+
     // cached data
     QString parsedContentCached;
     QString embedsJson;
@@ -399,6 +403,8 @@ struct Message : Core::JsonUtils::JsonObject
         get(obj, "flags", message.flags);
         get(obj, "attachments", message.attachments);
         get(obj, "embeds", message.embeds);
+        get(obj, "guild_id", message.guildId);
+        get(obj, "channel_type", message.channelType);
 
         if (obj.contains("embeds")) {
             QJsonDocument doc(obj.value("embeds").toArray());

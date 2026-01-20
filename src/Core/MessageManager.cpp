@@ -217,6 +217,21 @@ void MessageManager::onMessageCreated(const Discord::Message &message)
                           message.channelId);
 }
 
+void MessageManager::onMessageUpdated(const Discord::Message &message)
+{
+    Discord::Message updatedMsg = message;
+    static Markdown::ParseState state;
+    state.isInline = true;
+    auto ast = parser->parse(updatedMsg.content, state);
+    updatedMsg.parsedContentCached = parser->toHtml(ast);
+
+    messageCache.insert(message.id, new Discord::Message(updatedMsg));
+
+    repo.saveMessages({ updatedMsg });
+
+    emit messagesReceived({ true, Discord::Client::MessageLoadType::Created, message.channelId, { updatedMsg } });
+}
+
 void MessageManager::onMessageSendFailed(const QString &nonce, const QString &error)
 {
     qCWarning(LogCore) << "Message send failed for nonce" << nonce << ":" << error;

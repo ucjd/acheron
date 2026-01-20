@@ -111,6 +111,7 @@ public:
         UserIdRole,
         AvatarRole,
         TimestampRole,
+        EditedTimestampRole,
         CachedSizeRole,
         ShowHeaderRole,
         DateSeparatorRole,

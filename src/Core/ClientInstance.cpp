@@ -101,6 +101,8 @@ ClientInstance::ClientInstance(const AccountInfo &info, QObject *parent)
 
     connect(client, &Discord::Client::messageCreated, messageManager,
             &MessageManager::onMessageCreated);
+    connect(client, &Discord::Client::messageUpdated, messageManager,
+            &MessageManager::onMessageUpdated);
     connect(client, &Discord::Client::messageSendFailed, messageManager,
             &MessageManager::onMessageSendFailed);
     connect(client, &Discord::Client::channelUpdated, this, &ClientInstance::onChannelUpdated);
