@@ -247,6 +247,11 @@ void MainWindow::setupPermanentConnections(Core::ClientInstance *instance)
     if (!instance)
         return;
 
+    connect(instance, &Core::ClientInstance::channelCreated, this,
+            [this, instance](const Discord::ChannelCreate &event) {
+                channelTreeModel->addChannel(event, instance->accountId());
+            });
+
     connect(instance, &Core::ClientInstance::channelUpdated, this,
             [this, instance](const Discord::ChannelUpdate &update) {
                 channelTreeModel->updateChannel(update, instance->accountId());

@@ -73,6 +73,18 @@ struct TypingStart : Core::JsonUtils::JsonObject
     }
 };
 
+struct ChannelCreate : Core::JsonUtils::JsonObject
+{
+    Field<Channel> channel;
+
+    static ChannelCreate fromJson(const QJsonObject &obj)
+    {
+        ChannelCreate event;
+        event.channel = Channel::fromJson(obj);
+        return event;
+    }
+};
+
 struct ChannelUpdate : Core::JsonUtils::JsonObject
 {
     Field<Channel> channel;

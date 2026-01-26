@@ -48,6 +48,7 @@ signals:
     void gatewayMessageUpdate(const Message &data);
     void gatewayMessageDelete(const MessageDelete &data);
     void gatewayTypingStart(const TypingStart &data);
+    void gatewayChannelCreate(const ChannelCreate &data);
     void gatewayChannelUpdate(const ChannelUpdate &data);
     void gatewayGuildMembersChunk(const GuildMembersChunk &data);
 
@@ -64,6 +65,7 @@ private:
     void handleMessageUpdate(const Inbound &data);
     void handleMessageDelete(const Inbound &data);
     void handleTypingStart(const Inbound &data);
+    void handleChannelCreate(const Inbound &data);
     void handleChannelUpdate(const Inbound &data);
     void handleGuildMembersChunk(const Inbound &data);
     void handleHello(const Inbound &data);

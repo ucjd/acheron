@@ -107,11 +107,35 @@ ClientInstance::ClientInstance(const AccountInfo &info, QObject *parent)
             &MessageManager::onMessageDeleted);
     connect(client, &Discord::Client::messageSendFailed, messageManager,
             &MessageManager::onMessageSendFailed);
+    connect(client, &Discord::Client::channelCreated, this, &ClientInstance::onChannelCreated);
     connect(client, &Discord::Client::channelUpdated, this, &ClientInstance::onChannelUpdated);
     connect(client, &Discord::Client::guildMembersChunk, this,
             &ClientInstance::onGuildMembersChunk);
     connect(messageManager, &MessageManager::messagesReceived, this,
             &ClientInstance::onMessagesReceived);
+}
+
+void ClientInstance::onChannelCreated(const Discord::ChannelCreate &event)
+{
+    if (!event.channel.hasValue())
+        return;
+
+    const Discord::Channel &channel = event.channel.get();
+    Core::Snowflake channelId = channel.id.get();
+
+    QString connName = Storage::DatabaseManager::instance().getCacheConnectionName(account.id);
+    QSqlDatabase db = QSqlDatabase::database(connName);
+
+    db.transaction();
+
+    channelRepo.saveChannel(channel, db);
+
+    if (channel.permissionOverwrites.hasValue())
+        channelRepo.savePermissionOverwrites(channelId, channel.permissionOverwrites.get(), db);
+
+    db.commit();
+
+    emit channelCreated(event);
 }
 
 void ClientInstance::onChannelUpdated(const Discord::ChannelUpdate &event)

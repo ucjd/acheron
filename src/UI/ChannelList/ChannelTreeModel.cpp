@@ -390,6 +390,89 @@ ChannelNode *ChannelTreeModel::findCategoryNode(Snowflake categoryId, ChannelNod
     return nullptr;
 }
 
+ChannelNode *ChannelTreeModel::findGuildNodeById(Snowflake guildId, ChannelNode *accountNode)
+{
+    if (!accountNode || accountNode->type != ChannelNode::Type::Account)
+        return nullptr;
+
+    for (const auto &child : accountNode->children) {
+        if (child->type == ChannelNode::Type::Server && child->id == guildId)
+            return child.get();
+
+        if (child->type == ChannelNode::Type::Folder) {
+            for (const auto &folderChild : child->children)
+                if (folderChild->type == ChannelNode::Type::Server && folderChild->id == guildId)
+                    return folderChild.get();
+        }
+    }
+
+    return nullptr;
+}
+
+void ChannelTreeModel::addChannel(const Discord::ChannelCreate &event, Snowflake accountId)
+{
+    if (!event.channel.hasValue())
+        return;
+
+    const auto &channel = event.channel.get();
+
+    if (channel.type != Discord::ChannelType::GUILD_TEXT &&
+        channel.type != Discord::ChannelType::GUILD_NEWS &&
+        channel.type != Discord::ChannelType::GUILD_CATEGORY)
+        return;
+
+    if (!channel.guildId.hasValue())
+        return;
+
+    ChannelNode *accNode = accountNodes.value(accountId, nullptr);
+    if (!accNode)
+        return;
+
+    Snowflake guildId = channel.guildId.get();
+    ChannelNode *guildNode = findGuildNodeById(guildId, accNode);
+    if (!guildNode)
+        return;
+
+    if (findChannelNode(channel.id, guildNode))
+        return;
+
+    auto node = std::make_unique<ChannelNode>();
+    node->id = channel.id;
+    node->name = channel.name;
+    node->position = channel.position;
+    node->parentId = channel.parentId.hasValue() ? channel.parentId.get() : Core::Snowflake();
+
+    if (channel.type == Discord::ChannelType::GUILD_CATEGORY) {
+        node->type = ChannelNode::Type::Category;
+
+        int insertRow = guildNode->children.size();
+        QModelIndex guildIdx = indexForNode(guildNode);
+
+        beginInsertRows(guildIdx, insertRow, insertRow);
+        guildNode->addChild(std::move(node));
+        endInsertRows();
+    } else {
+        node->type = ChannelNode::Type::Channel;
+
+        ChannelNode *parentNode = nullptr;
+        if (node->parentId.isValid())
+            parentNode = findCategoryNode(node->parentId, guildNode);
+        if (!parentNode)
+            parentNode = guildNode;
+
+        int insertRow = parentNode->children.size();
+        QModelIndex parentIdx = indexForNode(parentNode);
+
+        beginInsertRows(parentIdx, insertRow, insertRow);
+        parentNode->addChild(std::move(node));
+        endInsertRows();
+
+        // notify proxy to re-check category visibility
+        if (parentNode->type == ChannelNode::Type::Category && parentIdx.isValid())
+            emit dataChanged(parentIdx, parentIdx);
+    }
+}
+
 void ChannelTreeModel::updateChannel(const Discord::ChannelUpdate &update, Snowflake accountId)
 {
     const auto &channel = update.channel.get();
@@ -460,8 +543,11 @@ void ChannelTreeModel::updateChannel(const Discord::ChannelUpdate &update, Snowf
         newParent->children.push_back(std::move(node));
         endInsertRows();
 
-        qCInfo(LogUI) << "Moved channel" << channel.id.get() << "from parent" << oldParentId << "to"
-                      << newParentId;
+        // notify proxy to re-check category visibility
+        if (oldParent->type == ChannelNode::Type::Category && oldParentIdx.isValid())
+            emit dataChanged(oldParentIdx, oldParentIdx);
+        if (newParent->type == ChannelNode::Type::Category && newParentIdx.isValid())
+            emit dataChanged(newParentIdx, newParentIdx);
     } else {
         channelNode->name = channel.name.get();
         channelNode->position = channel.position.get();

@@ -42,6 +42,7 @@ public:
     ChannelNode *getAccountNodeFor(ChannelNode *node);
 
     ChannelNode *nodeFromIndex(const QModelIndex &index) const;
+    void addChannel(const Discord::ChannelCreate &event, Snowflake accountId);
     void updateChannel(const Discord::ChannelUpdate &update, Snowflake accountId);
 
 private:
@@ -49,6 +50,7 @@ private:
     std::unique_ptr<ChannelNode> createGuildNode(const Discord::GatewayGuild &guild);
     ChannelNode *findChannelNode(Snowflake channelId, ChannelNode *root);
     ChannelNode *findGuildNode(ChannelNode *node);
+    ChannelNode *findGuildNodeById(Snowflake guildId, ChannelNode *accountNode);
     ChannelNode *findCategoryNode(Snowflake categoryId, ChannelNode *guildNode);
 
 private:
