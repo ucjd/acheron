@@ -576,6 +576,34 @@ void ChatModel::handleIncomingMessages(const Core::MessageRequestResult &result)
     }
 }
 
+void ChatModel::handleMessageDeleted(Snowflake channelId, Snowflake messageId)
+{
+    if (channelId != currentChannelId)
+        return;
+
+    for (int i = 0; i < messages.size(); i++) {
+        if (messages[i].id == messageId) {
+            beginRemoveRows({}, i, i);
+            sizeCache.remove(messageId);
+            embedCache.remove(messageId);
+            messages.remove(i);
+            endRemoveRows();
+
+            // invalidate what came afterwards
+            if (i < messages.size()) {
+                const auto &nextMessage = messages[i];
+
+                sizeCache.remove(nextMessage.id);
+                embedCache.remove(nextMessage.id);
+
+                QModelIndex idx = index(i, 0);
+                emit dataChanged(idx, idx, { CachedSizeRole, ShowHeaderRole, DateSeparatorRole });
+            }
+            break;
+        }
+    }
+}
+
 void ChatModel::handleMessageErrored(const QString &nonce)
 {
     for (int i = 0; i < messages.size(); i++) {

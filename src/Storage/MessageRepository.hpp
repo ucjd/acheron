@@ -18,6 +18,7 @@ public:
 
     void saveMessages(const QList<Discord::Message> &messages);
     void saveMessages(const QList<Discord::Message> &messages, QSqlDatabase &db);
+    void markMessageDeleted(Core::Snowflake messageId);
 
     QList<Discord::Message> getLatestMessages(Core::Snowflake channelId, int limit);
     QList<Discord::Message> getMessagesBefore(Core::Snowflake channelId, Core::Snowflake beforeId,

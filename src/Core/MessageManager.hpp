@@ -41,10 +41,12 @@ public:
 signals:
     void messagesReceived(const MessageRequestResult &result);
     void messageErrored(const QString &nonce);
+    void messageDeleted(Core::Snowflake channelId, Core::Snowflake messageId);
 
 public slots:
     void onMessageCreated(const Discord::Message &message);
     void onMessageUpdated(const Discord::Message &message);
+    void onMessageDeleted(const Discord::MessageDelete &event);
     void onMessageSendFailed(const QString &nonce, const QString &error);
 
 private slots:

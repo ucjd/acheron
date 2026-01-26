@@ -165,6 +165,9 @@ void Gateway::handleDispatch(const Inbound &data)
     case GatewayEvent::MESSAGE_UPDATE:
         handleMessageUpdate(data);
         break;
+    case GatewayEvent::MESSAGE_DELETE:
+        handleMessageDelete(data);
+        break;
     case GatewayEvent::TYPING_START:
         handleTypingStart(data);
         break;
@@ -212,6 +215,13 @@ void Gateway::handleMessageUpdate(const Inbound &data)
     Message msg = data.getData<Message>();
 
     emit gatewayMessageUpdate(msg);
+}
+
+void Gateway::handleMessageDelete(const Inbound &data)
+{
+    MessageDelete event = data.getData<MessageDelete>();
+
+    emit gatewayMessageDelete(event);
 }
 
 void Gateway::handleTypingStart(const Inbound &data)

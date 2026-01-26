@@ -140,6 +140,7 @@ public:
 public slots:
     void setActiveChannel(Snowflake channelId, Snowflake guildId = Snowflake::Invalid);
     void handleIncomingMessages(const Core::MessageRequestResult &result);
+    void handleMessageDeleted(Snowflake channelId, Snowflake messageId);
     void handleMessageErrored(const QString &nonce);
     void refreshUsersInView(const QList<Snowflake> &userIds);
     void revealSpoiler(Snowflake attachmentId);

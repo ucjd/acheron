@@ -143,6 +143,7 @@ void DatabaseManager::setupCacheTables(const QString &connName)
 	        "type" INTEGER NOT NULL,
 	        "flags" INTEGER NOT NULL,
 	        "embeds" TEXT,
+	        "deleted" INTEGER NOT NULL,
 	        PRIMARY KEY("id")
         );
     )");

@@ -232,6 +232,25 @@ void MessageManager::onMessageUpdated(const Discord::Message &message)
     emit messagesReceived({ true, Discord::Client::MessageLoadType::Created, message.channelId, { updatedMsg } });
 }
 
+void MessageManager::onMessageDeleted(const Discord::MessageDelete &event)
+{
+    Snowflake channelId = event.channelId.get();
+    Snowflake messageId = event.id.get();
+
+    messageCache.remove(messageId);
+
+    if (channelMessages.contains(channelId)) {
+        auto &order = channelMessages[channelId];
+        auto it = std::find(order.begin(), order.end(), messageId);
+        if (it != order.end())
+            order.erase(it);
+    }
+
+    repo.markMessageDeleted(messageId);
+
+    emit messageDeleted(channelId, messageId);
+}
+
 void MessageManager::onMessageSendFailed(const QString &nonce, const QString &error)
 {
     qCWarning(LogCore) << "Message send failed for nonce" << nonce << ":" << error;

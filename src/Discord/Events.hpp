@@ -105,5 +105,21 @@ struct GuildMembersChunk : Core::JsonUtils::JsonObject
     }
 };
 
+struct MessageDelete : Core::JsonUtils::JsonObject
+{
+    Field<Core::Snowflake> id;
+    Field<Core::Snowflake> channelId;
+    Field<Core::Snowflake, true> guildId;
+
+    static MessageDelete fromJson(const QJsonObject &obj)
+    {
+        MessageDelete event;
+        get(obj, "id", event.id);
+        get(obj, "channel_id", event.channelId);
+        get(obj, "guild_id", event.guildId);
+        return event;
+    }
+};
+
 } // namespace Discord
 } // namespace Acheron

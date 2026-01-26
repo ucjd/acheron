@@ -215,6 +215,7 @@ void MainWindow::switchActiveInstance(Core::ClientInstance *newInstance)
 
     connect(msgs, &MessageManager::messagesReceived, chatModel, &ChatModel::handleIncomingMessages);
     connect(msgs, &MessageManager::messageErrored, chatModel, &ChatModel::handleMessageErrored);
+    connect(msgs, &MessageManager::messageDeleted, chatModel, &ChatModel::handleMessageDeleted);
     connect(msgs, &MessageManager::messagesReceived, this,
             [this](const MessageRequestResult &result) {
                 if (result.success && result.type == Discord::Client::MessageLoadType::History &&

@@ -30,8 +30,8 @@ void MessageRepository::saveMessages(const QList<Discord::Message> &messages, QS
     QSqlQuery qMsg(db);
     qMsg.prepare(R"(
         INSERT OR REPLACE INTO messages
-		(id, channel_id, author_id, content, timestamp, edited_timestamp, type, flags, embeds)
-		VALUES (:id, :channel_id, :author_id, :content, :timestamp, :edited_timestamp, :type, :flags, :embeds)
+		(id, channel_id, author_id, content, timestamp, edited_timestamp, type, flags, embeds, deleted)
+		VALUES (:id, :channel_id, :author_id, :content, :timestamp, :edited_timestamp, :type, :flags, :embeds, 0)
     )");
 
     QSqlQuery qAtt(db);
@@ -83,6 +83,19 @@ void MessageRepository::saveMessages(const QList<Discord::Message> &messages, QS
     db.commit();
 }
 
+void MessageRepository::markMessageDeleted(Core::Snowflake messageId)
+{
+    auto db = getDb();
+    QSqlQuery q(db);
+    q.prepare(R"(
+        UPDATE messages SET deleted = 1 WHERE id = :id
+    )");
+    q.bindValue(":id", static_cast<qint64>(messageId));
+
+    if (!q.exec())
+        qCWarning(LogDB) << "MessageRepository: Mark message deleted failed:" << q.lastError().text();
+}
+
 QList<Discord::Message> MessageRepository::getLatestMessages(Core::Snowflake channelId, int limit)
 {
     auto db = getDb();
@@ -95,7 +108,7 @@ QList<Discord::Message> MessageRepository::getLatestMessages(Core::Snowflake cha
 		FROM messages m
         INNER JOIN users u
 		ON m.author_id = u.id
-		WHERE channel_id = :channel_id
+		WHERE channel_id = :channel_id AND m.deleted = 0
 		ORDER BY m.id DESC
         LIMIT :limit
     )");
@@ -157,7 +170,7 @@ QList<Discord::Message> MessageRepository::getMessagesBefore(Core::Snowflake cha
 		FROM messages m
 		INNER JOIN users u
 		ON m.author_id = u.id
-		WHERE channel_id = :channel_id AND m.id < :before_id
+		WHERE channel_id = :channel_id AND m.id < :before_id AND m.deleted = 0
 		ORDER BY m.id DESC
 		LIMIT :limit
 	)");
