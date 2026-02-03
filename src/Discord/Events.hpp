@@ -151,5 +151,47 @@ struct MessageDelete : Core::JsonUtils::JsonObject
     }
 };
 
+struct GuildRoleCreate : Core::JsonUtils::JsonObject
+{
+    Field<Core::Snowflake> guildId;
+    Field<Role> role;
+
+    static GuildRoleCreate fromJson(const QJsonObject &obj)
+    {
+        GuildRoleCreate event;
+        get(obj, "guild_id", event.guildId);
+        get(obj, "role", event.role);
+        return event;
+    }
+};
+
+struct GuildRoleUpdate : Core::JsonUtils::JsonObject
+{
+    Field<Core::Snowflake> guildId;
+    Field<Role> role;
+
+    static GuildRoleUpdate fromJson(const QJsonObject &obj)
+    {
+        GuildRoleUpdate event;
+        get(obj, "guild_id", event.guildId);
+        get(obj, "role", event.role);
+        return event;
+    }
+};
+
+struct GuildRoleDelete : Core::JsonUtils::JsonObject
+{
+    Field<Core::Snowflake> guildId;
+    Field<Core::Snowflake> roleId;
+
+    static GuildRoleDelete fromJson(const QJsonObject &obj)
+    {
+        GuildRoleDelete event;
+        get(obj, "guild_id", event.guildId);
+        get(obj, "role_id", event.roleId);
+        return event;
+    }
+};
+
 } // namespace Discord
 } // namespace Acheron

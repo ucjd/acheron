@@ -132,6 +132,9 @@ ClientInstance::ClientInstance(const AccountInfo &info, QObject *parent)
     connect(client, &Discord::Client::channelCreated, this, &ClientInstance::onChannelCreated);
     connect(client, &Discord::Client::channelUpdated, this, &ClientInstance::onChannelUpdated);
     connect(client, &Discord::Client::channelDeleted, this, &ClientInstance::onChannelDeleted);
+    connect(client, &Discord::Client::guildRoleCreated, this, &ClientInstance::onGuildRoleCreated);
+    connect(client, &Discord::Client::guildRoleUpdated, this, &ClientInstance::onGuildRoleUpdated);
+    connect(client, &Discord::Client::guildRoleDeleted, this, &ClientInstance::onGuildRoleDeleted);
     connect(client, &Discord::Client::guildMembersChunk, this,
             &ClientInstance::onGuildMembersChunk);
     connect(messageManager, &MessageManager::messagesReceived, this,
@@ -224,6 +227,112 @@ void ClientInstance::onChannelDeleted(const Discord::ChannelDelete &event)
     permissionManager->invalidateChannelCache(channelId);
 
     emit channelDeleted(event);
+}
+
+void ClientInstance::onGuildRoleCreated(const Discord::GuildRoleCreate &event)
+{
+    if (!event.guildId.hasValue() || !event.role.hasValue()) {
+        qCWarning(LogCore) << "Invalid GUILD_ROLE_CREATE event: missing guildId or role";
+        return;
+    }
+
+    Core::Snowflake guildId = event.guildId.get();
+    const Discord::Role &role = event.role.get();
+
+    if (!role.id.hasValue()) {
+        qCWarning(LogCore) << "Invalid role in GUILD_ROLE_CREATE: missing role ID";
+        return;
+    }
+
+    qCDebug(LogCore) << "Role created:" << role.id.get() << "in guild:" << guildId;
+
+    QString connName = Storage::DatabaseManager::instance().getCacheConnectionName(account.id);
+    QSqlDatabase db = QSqlDatabase::database(connName);
+
+    if (!db.transaction()) {
+        qCWarning(LogCore) << "Failed to start transaction for role creation";
+        return;
+    }
+
+    roleRepo.saveRole(guildId, role, db);
+
+    if (!db.commit()) {
+        qCWarning(LogCore) << "Failed to commit role creation:" << db.lastError().text();
+        db.rollback();
+        return;
+    }
+
+    permissionManager->invalidateGuildCache(guildId);
+    emit guildRoleCreated(event);
+}
+
+void ClientInstance::onGuildRoleUpdated(const Discord::GuildRoleUpdate &event)
+{
+    if (!event.guildId.hasValue() || !event.role.hasValue()) {
+        qCWarning(LogCore) << "Invalid GUILD_ROLE_UPDATE event: missing guildId or role";
+        return;
+    }
+
+    Core::Snowflake guildId = event.guildId.get();
+    const Discord::Role &role = event.role.get();
+
+    if (!role.id.hasValue()) {
+        qCWarning(LogCore) << "Invalid role in GUILD_ROLE_UPDATE: missing role ID";
+        return;
+    }
+
+    qCDebug(LogCore) << "Role updated:" << role.id.get() << "in guild:" << guildId;
+
+    QString connName = Storage::DatabaseManager::instance().getCacheConnectionName(account.id);
+    QSqlDatabase db = QSqlDatabase::database(connName);
+
+    if (!db.transaction()) {
+        qCWarning(LogCore) << "Failed to start transaction for role update";
+        return;
+    }
+
+    roleRepo.saveRole(guildId, role, db);
+
+    if (!db.commit()) {
+        qCWarning(LogCore) << "Failed to commit role update:" << db.lastError().text();
+        db.rollback();
+        return;
+    }
+
+    permissionManager->invalidateGuildCache(guildId);
+    emit guildRoleUpdated(event);
+}
+
+void ClientInstance::onGuildRoleDeleted(const Discord::GuildRoleDelete &event)
+{
+    if (!event.guildId.hasValue() || !event.roleId.hasValue()) {
+        qCWarning(LogCore) << "Invalid GUILD_ROLE_DELETE event: missing guildId or roleId";
+        return;
+    }
+
+    Core::Snowflake guildId = event.guildId.get();
+    Core::Snowflake roleId = event.roleId.get();
+
+    qCDebug(LogCore) << "Role deleted:" << roleId << "in guild:" << guildId;
+
+    QString connName = Storage::DatabaseManager::instance().getCacheConnectionName(account.id);
+    QSqlDatabase db = QSqlDatabase::database(connName);
+
+    if (!db.transaction()) {
+        qCWarning(LogCore) << "Failed to start transaction for role deletion";
+        return;
+    }
+
+    roleRepo.deleteRole(guildId, roleId, db);
+
+    if (!db.commit()) {
+        qCWarning(LogCore) << "Failed to commit role deletion:" << db.lastError().text();
+        db.rollback();
+        return;
+    }
+
+    permissionManager->invalidateGuildCache(guildId);
+    emit guildRoleDeleted(event);
 }
 
 void ClientInstance::onGuildMembersChunk(const Discord::GuildMembersChunk &chunk)

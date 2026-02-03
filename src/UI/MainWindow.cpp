@@ -265,6 +265,55 @@ void MainWindow::setupPermanentConnections(Core::ClientInstance *instance)
             [this, instance](const Discord::ChannelDelete &event) {
                 channelTreeModel->deleteChannel(event, instance->accountId());
             });
+
+    // todo: i dont really like the refresh users logic rn
+    connect(instance, &Core::ClientInstance::guildRoleCreated, this,
+            [this, instance](const Discord::GuildRoleCreate &event) {
+                if (!event.guildId.hasValue())
+                    return;
+
+                Core::Snowflake guildId = event.guildId.get();
+                guildRolesCache.remove(guildId);
+
+                channelTreeModel->invalidateGuildData(guildId);
+
+                if (cachedGuildId == guildId) {
+                    userColorCache.clear();
+                    chatModel->refreshUsersInView({});
+                }
+            });
+
+    connect(instance, &Core::ClientInstance::guildRoleUpdated, this,
+            [this, instance](const Discord::GuildRoleUpdate &event) {
+                if (!event.guildId.hasValue())
+                    return;
+
+                Core::Snowflake guildId = event.guildId.get();
+                guildRolesCache.remove(guildId);
+
+                channelTreeModel->invalidateGuildData(guildId);
+
+                if (cachedGuildId == guildId) {
+                    userColorCache.clear();
+                    chatModel->refreshUsersInView({});
+                }
+            });
+
+    connect(instance, &Core::ClientInstance::guildRoleDeleted, this,
+            [this, instance](const Discord::GuildRoleDelete &event) {
+                if (!event.guildId.hasValue())
+                    return;
+
+                Core::Snowflake guildId = event.guildId.get();
+                guildRolesCache.remove(guildId);
+
+                channelTreeModel->invalidateGuildData(guildId);
+
+                if (cachedGuildId == guildId) {
+                    userColorCache.clear();
+                    chatModel->refreshUsersInView({});
+                }
+            });
 }
 
 void MainWindow::setupUi()

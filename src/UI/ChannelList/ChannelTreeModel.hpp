@@ -46,6 +46,7 @@ public:
     void addChannel(const Discord::ChannelCreate &event, Snowflake accountId);
     void updateChannel(const Discord::ChannelUpdate &update, Snowflake accountId);
     void deleteChannel(const Discord::ChannelDelete &event, Snowflake accountId);
+    void invalidateGuildData(Snowflake guildId);
 
 private:
     QModelIndex indexForNode(ChannelNode *node) const;
@@ -54,6 +55,7 @@ private:
     ChannelNode *findGuildNode(ChannelNode *node);
     ChannelNode *findGuildNodeById(Snowflake guildId, ChannelNode *accountNode);
     ChannelNode *findCategoryNode(Snowflake categoryId, ChannelNode *guildNode);
+    void emitDataChangedRecursive(const QModelIndex &index);
 
 private:
     Session *session;

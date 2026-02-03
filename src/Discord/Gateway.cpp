@@ -183,6 +183,15 @@ void Gateway::handleDispatch(const Inbound &data)
     case GatewayEvent::GUILD_MEMBERS_CHUNK:
         handleGuildMembersChunk(data);
         break;
+    case GatewayEvent::GUILD_ROLE_CREATE:
+        handleGuildRoleCreate(data);
+        break;
+    case GatewayEvent::GUILD_ROLE_UPDATE:
+        handleGuildRoleUpdate(data);
+        break;
+    case GatewayEvent::GUILD_ROLE_DELETE:
+        handleGuildRoleDelete(data);
+        break;
     case GatewayEvent::UNKNOWN:
         qCInfo(LogDiscord) << "Unknown gateway event: " << t;
         break;
@@ -263,6 +272,27 @@ void Gateway::handleGuildMembersChunk(const Inbound &data)
     GuildMembersChunk chunk = data.getData<GuildMembersChunk>();
 
     emit gatewayGuildMembersChunk(chunk);
+}
+
+void Gateway::handleGuildRoleCreate(const Inbound &data)
+{
+    GuildRoleCreate event = data.getData<GuildRoleCreate>();
+
+    emit gatewayGuildRoleCreate(event);
+}
+
+void Gateway::handleGuildRoleUpdate(const Inbound &data)
+{
+    GuildRoleUpdate event = data.getData<GuildRoleUpdate>();
+
+    emit gatewayGuildRoleUpdate(event);
+}
+
+void Gateway::handleGuildRoleDelete(const Inbound &data)
+{
+    GuildRoleDelete event = data.getData<GuildRoleDelete>();
+
+    emit gatewayGuildRoleDelete(event);
 }
 
 void Gateway::requestGuildMembers(Core::Snowflake guildId, const QList<Core::Snowflake> &userIds)

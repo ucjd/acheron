@@ -262,5 +262,48 @@ std::optional<Discord::Channel> ChannelRepository::getChannel(Core::Snowflake ch
     return channel;
 }
 
+QList<Discord::Channel> ChannelRepository::getChannelsForGuild(Core::Snowflake guildId)
+{
+    QList<Discord::Channel> channels;
+    auto db = getDb();
+    QSqlQuery q(db);
+
+    q.prepare(R"(
+        SELECT id, type, position, name, guild_id, parent_id, last_message_id, icon, owner_id
+        FROM channels WHERE guild_id = :guild_id
+    )");
+    q.bindValue(":guild_id", static_cast<qint64>(guildId));
+
+    if (!q.exec()) {
+        qCWarning(LogDB) << "ChannelRepository: Get channels for guild failed:" << q.lastError().text();
+        return channels;
+    }
+
+    while (q.next()) {
+        Discord::Channel channel;
+        channel.id = static_cast<Core::Snowflake>(q.value(0).toLongLong());
+        channel.type = static_cast<Discord::ChannelType>(q.value(1).toInt());
+        if (!q.value(2).isNull())
+            channel.position = q.value(2).toInt();
+        if (!q.value(3).isNull())
+            channel.name = q.value(3).toString();
+        if (!q.value(4).isNull())
+            channel.guildId = static_cast<Core::Snowflake>(q.value(4).toLongLong());
+        if (!q.value(5).isNull())
+            channel.parentId = static_cast<Core::Snowflake>(q.value(5).toLongLong());
+        if (!q.value(6).isNull())
+            channel.lastMessageId = static_cast<Core::Snowflake>(q.value(6).toLongLong());
+        if (!q.value(7).isNull())
+            channel.icon = q.value(7).toString();
+        if (!q.value(8).isNull())
+            channel.ownerId = static_cast<Core::Snowflake>(q.value(8).toLongLong());
+
+        // todo: permission overwrites not loaded because the caller doesnt need it rn
+        channels.append(channel);
+    }
+
+    return channels;
+}
+
 } // namespace Storage
 } // namespace Acheron

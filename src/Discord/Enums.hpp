@@ -133,6 +133,9 @@ enum class GatewayEvent {
     CHANNEL_UPDATE,
     CHANNEL_DELETE,
     GUILD_MEMBERS_CHUNK,
+    GUILD_ROLE_CREATE,
+    GUILD_ROLE_UPDATE,
+    GUILD_ROLE_DELETE,
 };
 
 inline GatewayEvent parseGatewayEvent(const QString &event)
@@ -148,6 +151,9 @@ inline GatewayEvent parseGatewayEvent(const QString &event)
         { "CHANNEL_UPDATE", GatewayEvent::CHANNEL_UPDATE },
         { "CHANNEL_DELETE", GatewayEvent::CHANNEL_DELETE },
         { "GUILD_MEMBERS_CHUNK", GatewayEvent::GUILD_MEMBERS_CHUNK },
+        { "GUILD_ROLE_CREATE", GatewayEvent::GUILD_ROLE_CREATE },
+        { "GUILD_ROLE_UPDATE", GatewayEvent::GUILD_ROLE_UPDATE },
+        { "GUILD_ROLE_DELETE", GatewayEvent::GUILD_ROLE_DELETE },
     };
 
     return events.value(event, GatewayEvent::UNKNOWN);

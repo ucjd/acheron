@@ -162,5 +162,16 @@ QList<Discord::Role> RoleRepository::getRolesForGuild(Core::Snowflake guildId)
     return roles;
 }
 
+void RoleRepository::deleteRole(Core::Snowflake guildId, Core::Snowflake roleId, QSqlDatabase &db)
+{
+    QSqlQuery q(db);
+    q.prepare("DELETE FROM roles WHERE guild_id = :guild_id AND id = :id");
+    q.bindValue(":guild_id", static_cast<qint64>(guildId));
+    q.bindValue(":id", static_cast<qint64>(roleId));
+
+    if (!q.exec())
+        qCWarning(LogDB) << "RoleRepository: Delete role failed:" << q.lastError().text();
+}
+
 } // namespace Storage
 } // namespace Acheron

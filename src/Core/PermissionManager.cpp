@@ -127,5 +127,28 @@ void PermissionManager::invalidateChannelCache(Snowflake channelId)
     emit channelPermissionsChanged(channelId);
 }
 
+void PermissionManager::invalidateGuildCache(Snowflake guildId)
+{
+    auto channels = channelRepo.getChannelsForGuild(guildId);
+
+    QSet<Snowflake> channelIds;
+    channelIds.reserve(channels.size());
+    for (const auto &channel : channels)
+        channelIds.insert(channel.id.get());
+
+    auto it = permissionCache.begin();
+    while (it != permissionCache.end()) {
+        if (channelIds.contains(it.key().second))
+            it = permissionCache.erase(it);
+        else
+            ++it;
+    }
+
+    for (Snowflake channelId : channelIds)
+        emit channelPermissionsChanged(channelId);
+
+    qCDebug(LogCore) << "Invalidated permission cache for" << channels.size() << "channels in guild:" << guildId;
+}
+
 } // namespace Core
 } // namespace Acheron

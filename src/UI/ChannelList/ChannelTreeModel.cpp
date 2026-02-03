@@ -784,5 +784,34 @@ void ChannelTreeModel::deleteChannel(const Discord::ChannelDelete &event, Snowfl
     qCDebug(LogUI) << "Deleted channel tree node:" << channelId;
 }
 
+void ChannelTreeModel::invalidateGuildData(Snowflake guildId)
+{
+    for (auto it = accountNodes.begin(); it != accountNodes.end(); ++it) {
+        ChannelNode *accountNode = it.value();
+        ChannelNode *guildNode = findGuildNodeById(guildId, accountNode);
+        if (guildNode) {
+            QModelIndex guildIdx = indexForNode(guildNode);
+            if (guildIdx.isValid()) {
+                emitDataChangedRecursive(guildIdx);
+            }
+        }
+    }
+}
+
+void ChannelTreeModel::emitDataChangedRecursive(const QModelIndex &index)
+{
+    if (!index.isValid())
+        return;
+
+    emit dataChanged(index, index);
+
+    int rows = rowCount(index);
+    for (int i = 0; i < rows; ++i) {
+        QModelIndex child = this->index(i, 0, index);
+        if (child.isValid())
+            emitDataChangedRecursive(child);
+    }
+}
+
 } // namespace UI
 } // namespace Acheron

@@ -70,6 +70,9 @@ signals:
     void channelUpdated(const ChannelUpdate &event);
     void channelDeleted(const ChannelDelete &event);
     void guildMembersChunk(const GuildMembersChunk &chunk);
+    void guildRoleCreated(const GuildRoleCreate &event);
+    void guildRoleUpdated(const GuildRoleUpdate &event);
+    void guildRoleDeleted(const GuildRoleDelete &event);
     void messageSendFailed(const QString &nonce, const QString &error);
 
     void errorOccurred(const QString &errorStr);
@@ -86,6 +89,9 @@ private slots:
     void onGatewayChannelCreate(const ChannelCreate &event);
     void onGatewayChannelUpdate(const ChannelUpdate &event);
     void onGatewayChannelDelete(const ChannelDelete &event);
+    void onGatewayGuildRoleCreate(const GuildRoleCreate &event);
+    void onGatewayGuildRoleUpdate(const GuildRoleUpdate &event);
+    void onGatewayGuildRoleDelete(const GuildRoleDelete &event);
 
 private:
     void setState(Core::ConnectionState state);

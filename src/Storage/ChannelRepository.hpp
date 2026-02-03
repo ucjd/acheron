@@ -30,6 +30,7 @@ public:
             Core::Snowflake guildId);
 
     std::optional<Discord::Channel> getChannel(Core::Snowflake channelId);
+    QList<Discord::Channel> getChannelsForGuild(Core::Snowflake guildId);
 };
 
 } // namespace Storage

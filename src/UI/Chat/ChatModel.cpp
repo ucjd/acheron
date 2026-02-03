@@ -637,11 +637,16 @@ void ChatModel::setActiveChannel(Snowflake channelId, Snowflake guildId)
 
 void ChatModel::refreshUsersInView(const QList<Snowflake> &userIds)
 {
-    QSet<Snowflake> userIdSet(userIds.begin(), userIds.end());
+    bool refreshAll = userIds.isEmpty();
 
     for (int row = 0; row < messages.size(); ++row) {
         const auto &msg = messages[row];
-        if (msg.author.hasValue() && userIdSet.contains(msg.author->id.get())) {
+        if (!msg.author.hasValue())
+            continue;
+
+        Snowflake authorId = msg.author->id.get();
+
+        if (refreshAll || userIds.contains(authorId)) {
             QModelIndex idx = index(row, 0);
             emit dataChanged(idx, idx, { UsernameColorRole });
         }
