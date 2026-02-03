@@ -405,7 +405,7 @@ void MainWindow::onChannelPermissionsChanged(Core::Snowflake channelId)
     messageInput->setEnabled(canSend);
 
     if (canSend)
-        messageInput->setPlaceholder(node->name);
+        messageInput->setPlaceholder("Message #" + node->name);
     else
         messageInput->setPlaceholder("You do not have permission to send messages");
 }
