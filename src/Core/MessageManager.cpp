@@ -35,7 +35,7 @@ void MessageManager::requestLoadChannel(Snowflake channelId)
             const auto &order = channelMessages[channelId];
 
             int count = order.size();
-            int startIndex = (count > 50) ? (count - 50) : 0;
+            int startIndex = (count > 30) ? (count - 30) : 0;
 
             bool cached = true;
             QList<Discord::Message> result;
@@ -63,7 +63,7 @@ void MessageManager::requestLoadChannel(Snowflake channelId)
         }
 
         // disk cache
-        QList<Discord::Message> msgs = repo.getLatestMessages(channelId, 50);
+        QList<Discord::Message> msgs = repo.getLatestMessages(channelId, 30);
         if (!msgs.isEmpty()) { // probably good
             for (auto &msg : msgs) {
                 Markdown::ParseState state;
@@ -84,7 +84,7 @@ void MessageManager::requestLoadChannel(Snowflake channelId)
 
     QPointer<MessageManager> guard = this;
     client->fetchLatestMessages(
-            channelId, 50, [this, guard, channelId](const Result<QList<Discord::Message>> &result) {
+            channelId, 30, [this, guard, channelId](const Result<QList<Discord::Message>> &result) {
                 if (!guard)
                     return;
 
@@ -123,7 +123,7 @@ void MessageManager::requestLoadHistory(Snowflake channelId, Snowflake beforeId)
             int index = std::distance(order.begin(), it);
 
             if (index > 0) {
-                int count = std::min(index, 50);
+                int count = std::min(index, 30);
                 int startIndex = index - count;
 
                 bool cached = true;
@@ -153,7 +153,7 @@ void MessageManager::requestLoadHistory(Snowflake channelId, Snowflake beforeId)
         }
 
         // disk cache
-        QList<Discord::Message> msgs = repo.getMessagesBefore(channelId, beforeId, 50);
+        QList<Discord::Message> msgs = repo.getMessagesBefore(channelId, beforeId, 30);
 
         for (auto &msg : msgs) {
             Markdown::ParseState state;
@@ -176,7 +176,7 @@ void MessageManager::requestLoadHistory(Snowflake channelId, Snowflake beforeId)
     historyDebounce.insert(channelId);
 
     QPointer<MessageManager> guard = this;
-    client->fetchHistory(channelId, beforeId, 50,
+    client->fetchHistory(channelId, beforeId, 30,
                          [this, guard, channelId](const Result<QList<Discord::Message>> &result) {
                              if (!guard)
                                  return;
@@ -302,7 +302,7 @@ void MessageManager::onApiMessagesReceived(const QList<Discord::Message> &messag
         // maybe 0 could happen mistakenly prob not tho
         if (sortedMessages.size() == 0)
             lowestKnownId[channelId] = 0;
-        else if (sortedMessages.size() < 50)
+        else if (sortedMessages.size() < 30)
             lowestKnownId[channelId] = sortedMessages.first().id;
     }
 
