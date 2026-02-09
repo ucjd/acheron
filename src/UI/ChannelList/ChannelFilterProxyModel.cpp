@@ -36,23 +36,8 @@ void ChannelFilterProxyModel::setSelectedChannel(Core::Snowflake channelId)
 {
     if (selectedChannelId == channelId)
         return;
-    Core::Snowflake oldId = selectedChannelId;
     selectedChannelId = channelId;
-
-    // repaint only the old and new selected rows
-    auto emitForChannel = [this](Core::Snowflake id) {
-        if (!id.isValid())
-            return;
-        QModelIndexList matches = match(index(0, 0), ChannelTreeModel::IdRole,
-                                        QVariant::fromValue(static_cast<quint64>(id)), 1,
-                                        Qt::MatchExactly | Qt::MatchRecursive);
-        if (!matches.isEmpty())
-            emit dataChanged(matches.first(), matches.first());
-    };
-    emitForChannel(oldId);
-    emitForChannel(channelId);
-
-    QTimer::singleShot(0, this, &ChannelFilterProxyModel::invalidateFilter);
+    QSortFilterProxyModel::invalidateFilter();
 }
 
 void ChannelFilterProxyModel::invalidateFilter()

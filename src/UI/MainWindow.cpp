@@ -148,6 +148,7 @@ void MainWindow::onChannelSelectionChanged(const QModelIndex &current, const QMo
         return;
 
     channelFilterProxy->setSelectedChannel(node->id);
+    channelTree->viewport()->update();
 
     ChannelNode *accountNode = channelTreeModel->getAccountNodeFor(node);
     if (!accountNode) {
