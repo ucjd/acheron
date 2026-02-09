@@ -40,6 +40,7 @@ set(PROJECT_SOURCES
     src/Core/TypingTracker.cpp
     src/Core/PermissionManager.cpp
     src/Core/PermissionComputer.cpp
+    src/Core/ReadStateManager.cpp
     src/Core/Markdown/Parser.cpp
     src/UI/MainWindow.cpp
     src/UI/TypingIndicator.cpp

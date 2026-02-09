@@ -11,12 +11,19 @@ class ChannelTreeView : public QTreeView
 public:
     ChannelTreeView(QWidget *parent = nullptr);
 
+    void performDefaultExpansion();
+
+signals:
+    void markAsReadRequested(const QModelIndex &proxyIndex);
+
+protected:
+    void contextMenuEvent(QContextMenuEvent *event) override;
+
 private:
-    // surely theres a simpler way
     void mousePressEvent(QMouseEvent *event) override;
     void mouseDoubleClickEvent(QMouseEvent *event) override;
 
-    void handleMouseEventForExpansion(QMouseEvent *event);
+    bool handleMouseEventForExpansion(QMouseEvent *event);
 };
 
 } // namespace UI

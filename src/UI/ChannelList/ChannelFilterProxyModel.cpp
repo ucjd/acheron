@@ -20,6 +20,41 @@ void ChannelFilterProxyModel::setSourceModel(QAbstractItemModel *sourceModel)
     QSortFilterProxyModel::setSourceModel(sourceModel);
 }
 
+QVariant ChannelFilterProxyModel::data(const QModelIndex &index, int role) const
+{
+    if (role == ChannelFilterProxyModel::SelectedRole) {
+        QModelIndex sourceIndex = mapToSource(index);
+        ChannelNode *node = static_cast<ChannelNode *>(sourceIndex.internalPointer());
+        if (node)
+            return node->id == selectedChannelId;
+        return false;
+    }
+    return QSortFilterProxyModel::data(index, role);
+}
+
+void ChannelFilterProxyModel::setSelectedChannel(Core::Snowflake channelId)
+{
+    if (selectedChannelId == channelId)
+        return;
+    Core::Snowflake oldId = selectedChannelId;
+    selectedChannelId = channelId;
+
+    // repaint only the old and new selected rows
+    auto emitForChannel = [this](Core::Snowflake id) {
+        if (!id.isValid())
+            return;
+        QModelIndexList matches = match(index(0, 0), ChannelTreeModel::IdRole,
+                                        QVariant::fromValue(static_cast<quint64>(id)), 1,
+                                        Qt::MatchExactly | Qt::MatchRecursive);
+        if (!matches.isEmpty())
+            emit dataChanged(matches.first(), matches.first());
+    };
+    emitForChannel(oldId);
+    emitForChannel(channelId);
+
+    QTimer::singleShot(0, this, &ChannelFilterProxyModel::invalidateFilter);
+}
+
 void ChannelFilterProxyModel::invalidateFilter()
 {
     QSortFilterProxyModel::invalidateFilter();
@@ -72,7 +107,24 @@ bool ChannelFilterProxyModel::filterAcceptsRow(int sourceRow, const QModelIndex 
     if (!instance)
         return true;
 
-    if (nodeType == ChannelNode::Type::Channel || nodeType == ChannelNode::Type::Category) {
+    // hide read channels under collapsed categories, but keep selected channel visible
+    if (nodeType == ChannelNode::Type::Channel) {
+        ChannelNode *parentNode = static_cast<ChannelNode *>(sourceParent.internalPointer());
+        if (parentNode && parentNode->type == ChannelNode::Type::Category && parentNode->collapsed) {
+            Core::Snowflake channelId =
+                    Core::Snowflake(index.data(ChannelTreeModel::IdRole).toULongLong());
+            if (channelId == selectedChannelId)
+                return true;
+            bool unread = index.data(ChannelTreeModel::IsUnreadRole).toBool();
+            bool muted = index.data(ChannelTreeModel::IsMutedRole).toBool();
+            if (!unread || muted)
+                return false;
+        }
+    }
+
+    if (nodeType == ChannelNode::Type::Channel) {
+        return hasChannelViewPermission(index);
+    } else if (nodeType == ChannelNode::Type::Category) {
         auto *permissionManager = instance->permissions();
         if (!permissionManager)
             return true;
@@ -80,16 +132,9 @@ bool ChannelFilterProxyModel::filterAcceptsRow(int sourceRow, const QModelIndex 
         Core::Snowflake channelId =
                 Core::Snowflake(index.data(ChannelTreeModel::IdRole).toULongLong());
 
-        if (nodeType == ChannelNode::Type::Channel) {
-            return permissionManager->hasChannelPermission(userId, channelId,
-                                                           Discord::Permission::VIEW_CHANNEL);
-        } else {
-            if (nodeType == ChannelNode::Type::Category) {
-                if (permissionManager->hasChannelPermission(userId, channelId, Discord::Permission::VIEW_CHANNEL | Discord::Permission::MANAGE_CHANNELS))
-                    return true;
-                return hasVisibleChildren(index);
-            }
-        }
+        if (permissionManager->hasChannelPermission(userId, channelId, Discord::Permission::VIEW_CHANNEL | Discord::Permission::MANAGE_CHANNELS))
+            return true;
+        return hasVisibleChildren(index);
     }
 
     return true;
@@ -100,13 +145,33 @@ bool ChannelFilterProxyModel::hasVisibleChildren(const QModelIndex &parent) cons
     if (!parent.isValid())
         return false;
 
-    int rowCount = sourceModel()->rowCount(parent);
-    for (int i = 0; i < rowCount; ++i) {
-        if (filterAcceptsRow(i, parent))
+    int rows = sourceModel()->rowCount(parent);
+    for (int i = 0; i < rows; ++i) {
+        QModelIndex child = sourceModel()->index(i, 0, parent);
+        if (child.isValid() && hasChannelViewPermission(child))
             return true;
     }
 
     return false;
+}
+
+bool ChannelFilterProxyModel::hasChannelViewPermission(const QModelIndex &sourceIndex) const
+{
+    Core::Snowflake userId = getUserIdForNode(sourceIndex);
+    if (!userId.isValid())
+        return true;
+
+    auto *instance = session->client(userId);
+    if (!instance)
+        return true;
+
+    auto *perms = instance->permissions();
+    if (!perms)
+        return true;
+
+    Core::Snowflake channelId =
+            Core::Snowflake(sourceIndex.data(ChannelTreeModel::IdRole).toULongLong());
+    return perms->hasChannelPermission(userId, channelId, Discord::Permission::VIEW_CHANNEL);
 }
 
 // todo: uhhh

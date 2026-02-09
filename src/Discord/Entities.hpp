@@ -425,5 +425,101 @@ struct Message : Core::JsonUtils::JsonObject
     }
 };
 
+struct MuteConfig : Core::JsonUtils::JsonObject
+{
+    Field<QString, true, true> endTime;
+    Field<int, true> selectedTimeWindow;
+
+    static MuteConfig fromJson(const QJsonObject &obj)
+    {
+        MuteConfig config;
+        get(obj, "end_time", config.endTime);
+        get(obj, "selected_time_window", config.selectedTimeWindow);
+        return config;
+    }
+};
+
+struct ChannelOverride : Core::JsonUtils::JsonObject
+{
+    Field<Core::Snowflake> channelId;
+    Field<bool, true> collapsed;
+    Field<int, true> flags;
+    Field<int, true> messageNotifications;
+    Field<bool, true> muted;
+    Field<MuteConfig, true, true> muteConfig;
+
+    static ChannelOverride fromJson(const QJsonObject &obj)
+    {
+        ChannelOverride co;
+        get(obj, "channel_id", co.channelId);
+        get(obj, "collapsed", co.collapsed);
+        get(obj, "flags", co.flags);
+        get(obj, "message_notifications", co.messageNotifications);
+        get(obj, "muted", co.muted);
+        get(obj, "mute_config", co.muteConfig);
+        return co;
+    }
+};
+
+struct UserGuildSettings : Core::JsonUtils::JsonObject
+{
+    Field<QList<ChannelOverride>, true> channelOverrides;
+    Field<int, true> flags;
+    Field<Core::Snowflake, false, true> guildId;
+    Field<bool, true> hideMutedChannels;
+    Field<int, true> messageNotifications;
+    Field<bool, true> mobilePush;
+    Field<bool, true> muteScheduledEvents;
+    Field<bool, true> muted;
+    Field<MuteConfig, true, true> muteConfig;
+    Field<int, true> notifyHighlights;
+    Field<bool, true> suppressEveryone;
+    Field<bool, true> suppressRoles;
+    Field<int, true> version;
+
+    static UserGuildSettings fromJson(const QJsonObject &obj)
+    {
+        UserGuildSettings s;
+        get(obj, "channel_overrides", s.channelOverrides);
+        get(obj, "flags", s.flags);
+        get(obj, "guild_id", s.guildId);
+        get(obj, "hide_muted_channels", s.hideMutedChannels);
+        get(obj, "message_notifications", s.messageNotifications);
+        get(obj, "mobile_push", s.mobilePush);
+        get(obj, "mute_scheduled_events", s.muteScheduledEvents);
+        get(obj, "muted", s.muted);
+        get(obj, "mute_config", s.muteConfig);
+        get(obj, "notify_highlights", s.notifyHighlights);
+        get(obj, "suppress_everyone", s.suppressEveryone);
+        get(obj, "suppress_roles", s.suppressRoles);
+        get(obj, "version", s.version);
+        return s;
+    }
+};
+
+struct ReadStateEntry : Core::JsonUtils::JsonObject
+{
+    Field<Core::Snowflake> id;
+    Field<int, true> readStateType;
+    Field<Core::Snowflake, true, true> lastMessageId;
+    Field<int, true> mentionCount;
+    Field<int, true> flags;
+    Field<int, true, true> lastViewed;
+    Field<QString, true, true> lastPinTimestamp;
+
+    static ReadStateEntry fromJson(const QJsonObject &obj)
+    {
+        ReadStateEntry entry;
+        get(obj, "id", entry.id);
+        get(obj, "read_state_type", entry.readStateType);
+        get(obj, "last_message_id", entry.lastMessageId);
+        get(obj, "mention_count", entry.mentionCount);
+        get(obj, "flags", entry.flags);
+        get(obj, "last_viewed", entry.lastViewed);
+        get(obj, "last_pin_timestamp", entry.lastPinTimestamp);
+        return entry;
+    }
+};
+
 } // namespace Discord
 } // namespace Acheron

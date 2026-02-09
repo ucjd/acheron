@@ -136,6 +136,8 @@ enum class GatewayEvent {
     GUILD_ROLE_CREATE,
     GUILD_ROLE_UPDATE,
     GUILD_ROLE_DELETE,
+    MESSAGE_ACK,
+    USER_GUILD_SETTINGS_UPDATE,
 };
 
 inline GatewayEvent parseGatewayEvent(const QString &event)
@@ -154,6 +156,8 @@ inline GatewayEvent parseGatewayEvent(const QString &event)
         { "GUILD_ROLE_CREATE", GatewayEvent::GUILD_ROLE_CREATE },
         { "GUILD_ROLE_UPDATE", GatewayEvent::GUILD_ROLE_UPDATE },
         { "GUILD_ROLE_DELETE", GatewayEvent::GUILD_ROLE_DELETE },
+        { "MESSAGE_ACK", GatewayEvent::MESSAGE_ACK },
+        { "USER_GUILD_SETTINGS_UPDATE", GatewayEvent::USER_GUILD_SETTINGS_UPDATE },
     };
 
     return events.value(event, GatewayEvent::UNKNOWN);
@@ -329,6 +333,14 @@ Q_DECLARE_OPERATORS_FOR_FLAGS(Permissions);
 
 constexpr Permissions ALL_PERMISSIONS = Permissions::fromInt(0xFFFFFFFFFFFFFFFFULL);
 constexpr Permissions NO_PERMISSIONS = Permissions::fromInt(0ULL);
+
+enum class ReadStateFlag {
+    IS_GUILD_CHANNEL = 1 << 0,
+    IS_THREAD = 1 << 1,
+    IS_MENTION_LOW_IMPORTANCE = 1 << 2,
+};
+Q_DECLARE_FLAGS(ReadStateFlags, ReadStateFlag);
+Q_DECLARE_OPERATORS_FOR_FLAGS(ReadStateFlags);
 
 enum class AttachmentFlag {
     IS_CLIP = 1 << 0,

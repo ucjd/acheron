@@ -26,8 +26,11 @@ struct ChannelNode
     Core::Snowflake id;
     QString name;
     Type type;
-    int unreadCount = 0;
     int position = 0;
+    bool isUnread = false;
+    int mentionCount = 0;
+    bool isMuted = false;
+    bool collapsed = false;
     Core::Snowflake parentId;
     QString TEMP_iconHash;
     std::optional<QString> folderName;

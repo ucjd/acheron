@@ -1,6 +1,10 @@
 #include "ClientInstance.hpp"
+#include "ReadStateManager.hpp"
+
+#include <QTimer>
 
 #include "Core/Logging.hpp"
+#include "Discord/Enums.hpp"
 #include "Storage/DatabaseManager.hpp"
 #include "Storage/GuildRepository.hpp"
 #include "Storage/ChannelRepository.hpp"
@@ -25,6 +29,7 @@ ClientInstance::ClientInstance(const AccountInfo &info, QObject *parent)
     messageManager = new MessageManager(info.id, client, userManager, this);
 
     permissionManager = new PermissionManager(info.id, this);
+    readStateManager = new ReadStateManager(info.id, permissionManager, this);
 
     connect(client, &Discord::Client::stateChanged, this, &ClientInstance::stateChanged);
 
@@ -98,6 +103,29 @@ ClientInstance::ClientInstance(const AccountInfo &info, QObject *parent)
 
         db.commit();
 
+        readStateManager->loadFromReady(
+                ready.readState.hasValue() ? ready.readState.get()
+                                           : QList<Discord::ReadStateEntry>{},
+                ready.userGuildSettings.hasValue() ? ready.userGuildSettings.get()
+                                                   : QList<Discord::UserGuildSettings>{});
+
+        for (const auto &guild : ready.guilds.get()) {
+            for (const auto &channel : guild.channels.get()) {
+                if (channel.lastMessageId.hasValue())
+                    readStateManager->updateChannelLastMessageId(channel.id.get(),
+                                                                 channel.lastMessageId.get());
+            }
+        }
+
+        if (ready.privateChannels.hasValue()) {
+            for (const auto &channel : ready.privateChannels.get()) {
+                Snowflake lastMsg = channel.lastMessageId.hasValue()
+                                            ? channel.lastMessageId.get()
+                                            : channel.id.get();
+                readStateManager->updateChannelLastMessageId(channel.id.get(), lastMsg);
+            }
+        }
+
         emit detailsUpdated(account);
         emit this->ready(ready);
     });
@@ -139,6 +167,23 @@ ClientInstance::ClientInstance(const AccountInfo &info, QObject *parent)
             &ClientInstance::onGuildMembersChunk);
     connect(messageManager, &MessageManager::messagesReceived, this,
             &ClientInstance::onMessagesReceived);
+
+    connect(client, &Discord::Client::messageAcked, readStateManager,
+            &ReadStateManager::onMessageAck);
+    connect(client, &Discord::Client::userGuildSettingsUpdated, readStateManager,
+            &ReadStateManager::onUserGuildSettingsUpdate);
+
+    connect(client, &Discord::Client::messageCreated, this, &ClientInstance::onMessageCreated);
+
+    connect(readStateManager, &ReadStateManager::readStateUpdated, this,
+            &ClientInstance::readStateChanged);
+    connect(readStateManager, &ReadStateManager::guildSettingsUpdated, this,
+            &ClientInstance::guildSettingsChanged);
+
+    connect(readStateManager, &ReadStateManager::ackRequested, this,
+            &ClientInstance::handleAckRequest);
+    connect(readStateManager, &ReadStateManager::bulkAckRequested, this,
+            &ClientInstance::handleBulkAckRequest);
 }
 
 void ClientInstance::onChannelCreated(const Discord::ChannelCreate &event)
@@ -396,6 +441,52 @@ void ClientInstance::onMessagesReceived(const MessageRequestResult &result)
         client->requestGuildMembers(guildId, missingUserIds);
 }
 
+void ClientInstance::onMessageCreated(const Discord::Message &msg)
+{
+    if (!msg.channelId.hasValue() || !msg.id.hasValue())
+        return;
+
+    Snowflake channelId = msg.channelId.get();
+    Snowflake messageId = msg.id.get();
+
+    readStateManager->handleMessageCreated(channelId, messageId);
+
+    emit channelLastMessageUpdated(channelId, messageId);
+}
+
+void ClientInstance::handleAckRequest(Snowflake channelId, Snowflake messageId)
+{
+    auto channelOpt = channelRepo.getChannel(channelId);
+    bool isGuildChannel = channelOpt && channelOpt->guildId.hasValue();
+    int ackFlags = isGuildChannel
+                           ? static_cast<int>(Discord::ReadStateFlag::IS_GUILD_CHANNEL)
+                           : 0;
+    int lastViewed = ReadStateManager::daysSinceDiscordEpoch();
+    client->ackMessage(channelId, messageId, ackFlags, lastViewed);
+}
+
+void ClientInstance::handleBulkAckRequest(const QList<QPair<Snowflake, Snowflake>> &pairs)
+{
+    QList<Discord::Client::AckEntry> entries;
+    entries.reserve(pairs.size());
+    for (const auto &[channelId, messageId] : pairs)
+        entries.append({ channelId, messageId, 0 });
+
+    constexpr int maxPerRequest = 100;
+    int chunk = 0;
+    for (int i = 0; i < entries.size(); i += maxPerRequest) {
+        auto batch = entries.mid(i, maxPerRequest);
+        if (chunk == 0) {
+            client->ackBulk(batch);
+        } else {
+            QTimer::singleShot(chunk * 1000, this, [this, batch]() {
+                client->ackBulk(batch);
+            });
+        }
+        ++chunk;
+    }
+}
+
 ClientInstance::~ClientInstance()
 {
     Storage::DatabaseManager::instance().closeCacheDatabase(account.id);
@@ -429,6 +520,11 @@ UserManager *ClientInstance::users() const
 PermissionManager *ClientInstance::permissions() const
 {
     return permissionManager;
+}
+
+ReadStateManager *ClientInstance::readState() const
+{
+    return readStateManager;
 }
 
 QList<Discord::Role> ClientInstance::getRolesForGuild(Snowflake guildId)

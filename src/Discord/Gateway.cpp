@@ -193,6 +193,12 @@ void Gateway::handleDispatch(const Inbound &data)
     case GatewayEvent::GUILD_ROLE_DELETE:
         handleGuildRoleDelete(data);
         break;
+    case GatewayEvent::MESSAGE_ACK:
+        handleMessageAck(data);
+        break;
+    case GatewayEvent::USER_GUILD_SETTINGS_UPDATE:
+        handleUserGuildSettingsUpdate(data);
+        break;
     case GatewayEvent::UNKNOWN:
         qCInfo(LogDiscord) << "Unknown gateway event: " << t;
         break;
@@ -294,6 +300,20 @@ void Gateway::handleGuildRoleDelete(const Inbound &data)
     GuildRoleDelete event = data.getData<GuildRoleDelete>();
 
     emit gatewayGuildRoleDelete(event);
+}
+
+void Gateway::handleMessageAck(const Inbound &data)
+{
+    MessageAck event = data.getData<MessageAck>();
+
+    emit gatewayMessageAck(event);
+}
+
+void Gateway::handleUserGuildSettingsUpdate(const Inbound &data)
+{
+    UserGuildSettings settings = data.getData<UserGuildSettings>();
+
+    emit gatewayUserGuildSettingsUpdate(settings);
 }
 
 void Gateway::requestGuildMembers(Core::Snowflake guildId, const QList<Core::Snowflake> &userIds)

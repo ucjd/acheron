@@ -55,6 +55,8 @@ signals:
     void gatewayGuildRoleCreate(const GuildRoleCreate &data);
     void gatewayGuildRoleUpdate(const GuildRoleUpdate &data);
     void gatewayGuildRoleDelete(const GuildRoleDelete &data);
+    void gatewayMessageAck(const MessageAck &data);
+    void gatewayUserGuildSettingsUpdate(const UserGuildSettings &data);
 
 private:
     void sendPayload(const QJsonObject &obj);
@@ -76,6 +78,8 @@ private:
     void handleGuildRoleCreate(const Inbound &data);
     void handleGuildRoleUpdate(const Inbound &data);
     void handleGuildRoleDelete(const Inbound &data);
+    void handleMessageAck(const Inbound &data);
+    void handleUserGuildSettingsUpdate(const Inbound &data);
     void handleHello(const Inbound &data);
     void identify();
 

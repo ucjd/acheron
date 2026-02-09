@@ -36,6 +36,9 @@ Client::Client(const QString &token, const QString &gatewayUrl, const QString &b
     connect(gateway, &Gateway::gatewayGuildRoleCreate, this, &Client::onGatewayGuildRoleCreate);
     connect(gateway, &Gateway::gatewayGuildRoleUpdate, this, &Client::onGatewayGuildRoleUpdate);
     connect(gateway, &Gateway::gatewayGuildRoleDelete, this, &Client::onGatewayGuildRoleDelete);
+    connect(gateway, &Gateway::gatewayMessageAck, this, &Client::messageAcked);
+    connect(gateway, &Gateway::gatewayUserGuildSettingsUpdate, this,
+            &Client::userGuildSettingsUpdated);
 }
 
 void Client::start()
@@ -213,16 +216,56 @@ void Client::sendMessage(Snowflake channelId, const QString &content, const QStr
     });
 }
 
+void Client::ackMessage(Snowflake channelId, Snowflake messageId, int flags, int lastViewed)
+{
+    QString endpoint = "/channels/" + QString::number(channelId) + "/messages/" +
+                       QString::number(messageId) + "/ack";
+
+    QJsonObject payload;
+    payload["flags"] = flags;
+    payload["last_viewed"] = lastViewed;
+    payload["token"] = QJsonValue::Null;
+
+    httpClient->post(endpoint, payload, [this, channelId](const HttpResponse &response) {
+        if (!response.success)
+            qCWarning(LogDiscord) << "Failed to ack message in channel" << channelId
+                                  << ":" << response.error;
+    });
+}
+
+void Client::ackBulk(const QList<AckEntry> &entries)
+{
+    QJsonArray readStates;
+    for (const auto &entry : entries) {
+        QJsonObject obj;
+        obj["channel_id"] = QString::number(entry.channelId);
+        obj["message_id"] = QString::number(entry.messageId);
+        obj["read_state_type"] = entry.readStateType;
+        readStates.append(obj);
+    }
+
+    QJsonObject payload;
+    payload["read_states"] = readStates;
+    httpClient->post("/read-states/ack-bulk", payload, [this](const HttpResponse &response) {
+        if (!response.success)
+            qCWarning(LogDiscord) << "Failed to bulk ack:" << response.error;
+    });
+}
+
+void Client::ensureSubscriptionByGuild(Snowflake guildId)
+{
+    if (!subscribedGuilds.contains(guildId)) {
+        gateway->subscribeToGuild(guildId);
+    }
+}
+
 void Client::ensureSubscriptionByChannel(Snowflake channelId)
 {
     if (!channelToGuild.contains(channelId))
         return;
 
     Snowflake guildId = channelToGuild.value(channelId);
-
-    if (!subscribedGuilds.contains(guildId)) {
-        gateway->subscribeToGuild(guildId);
-    }
+    ensureSubscriptionByGuild(guildId);
 }
 
 void Client::requestGuildMembers(Snowflake guildId, const QList<Snowflake> &userIds)

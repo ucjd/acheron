@@ -14,6 +14,8 @@
 namespace Acheron {
 namespace Core {
 
+class ReadStateManager;
+
 class ClientInstance : public QObject
 {
     Q_OBJECT
@@ -28,6 +30,7 @@ public:
     [[nodiscard]] MessageManager *messages() const;
     [[nodiscard]] UserManager *users() const;
     [[nodiscard]] PermissionManager *permissions() const;
+    [[nodiscard]] ReadStateManager *readState() const;
 
     [[nodiscard]] QList<Discord::Role> getRolesForGuild(Snowflake guildId);
 
@@ -48,6 +51,9 @@ signals:
     void guildRoleUpdated(const Discord::GuildRoleUpdate &event);
     void guildRoleDeleted(const Discord::GuildRoleDelete &event);
     void membersUpdated(Snowflake guildId, const QList<Snowflake> &userIds);
+    void readStateChanged(Snowflake channelId);
+    void guildSettingsChanged(Snowflake guildId);
+    void channelLastMessageUpdated(Snowflake channelId, Snowflake messageId);
 
 private slots:
     void onChannelCreated(const Discord::ChannelCreate &event);
@@ -58,6 +64,9 @@ private slots:
     void onGuildRoleDeleted(const Discord::GuildRoleDelete &event);
     void onGuildMembersChunk(const Discord::GuildMembersChunk &chunk);
     void onMessagesReceived(const MessageRequestResult &result);
+    void onMessageCreated(const Discord::Message &msg);
+    void handleAckRequest(Snowflake channelId, Snowflake messageId);
+    void handleBulkAckRequest(const QList<QPair<Snowflake, Snowflake>> &pairs);
 
 private:
     AccountInfo account;
@@ -66,6 +75,7 @@ private:
     UserManager *userManager;
     Discord::Client *client;
     PermissionManager *permissionManager;
+    ReadStateManager *readStateManager;
 
     Storage::RoleRepository roleRepo;
     Storage::GuildRepository guildRepo;

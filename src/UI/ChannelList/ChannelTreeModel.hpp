@@ -12,6 +12,11 @@
 using Acheron::Core::Session;
 using Acheron::Core::Snowflake;
 
+namespace Acheron::Core {
+struct ChannelReadState;
+class ClientInstance;
+} // namespace Acheron::Core
+
 namespace Acheron {
 namespace UI {
 class ChannelTreeModel : public QAbstractItemModel
@@ -22,10 +27,13 @@ public:
 
     enum Roles {
         IdRole = Qt::UserRole,
-        UnreadCountRole = Qt::UserRole + 1,
-        TypeRole = Qt::UserRole + 2,
-        PositionRole = Qt::UserRole + 3,
-        LastMessageIdRole = Qt::UserRole + 4,
+        TypeRole = Qt::UserRole + 1,
+        PositionRole = Qt::UserRole + 2,
+        LastMessageIdRole = Qt::UserRole + 3,
+        IsUnreadRole = Qt::UserRole + 4,
+        MentionCountRole = Qt::UserRole + 5,
+        IsMutedRole = Qt::UserRole + 6,
+        CollapsedRole = Qt::UserRole + 7,
     };
 
     QModelIndex index(int row, int column, const QModelIndex &parentIndex) const override;
@@ -47,8 +55,23 @@ public:
     void updateChannel(const Discord::ChannelUpdate &update, Snowflake accountId);
     void deleteChannel(const Discord::ChannelDelete &event, Snowflake accountId);
     void invalidateGuildData(Snowflake guildId);
+    void updateReadState(Snowflake channelId, Snowflake accountId);
+    void updateGuildSettings(Snowflake guildId, Snowflake accountId);
+    void updateChannelLastMessageId(Snowflake channelId, Snowflake messageId, Snowflake accountId);
+    void toggleCollapsed(const QModelIndex &index);
+
+    QList<QPair<Snowflake, Snowflake>> getMarkableChannels(const QModelIndex &index);
 
 private:
+    void initChannelReadStates(ChannelNode *node, Core::ClientInstance *instance);
+    void updateChildrenReadState(ChannelNode *node, Snowflake guildId,
+                                 Core::ClientInstance *instance);
+    static void collectMarkableChannels(ChannelNode *node,
+                                        QList<QPair<Snowflake, Snowflake>> &out);
+    void applyChannelReadState(ChannelNode *node, const Core::ChannelReadState &state);
+    static void aggregateChildren(ChannelNode *node);
+    void recomputeSubtreeAggregates(ChannelNode *root);
+    void updateNodeAggregates(ChannelNode *node);
     QModelIndex indexForNode(ChannelNode *node) const;
     std::unique_ptr<ChannelNode> createGuildNode(const Discord::GatewayGuild &guild);
     ChannelNode *findChannelTreeNode(Snowflake channelId, ChannelNode *root);

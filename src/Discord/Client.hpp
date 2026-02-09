@@ -51,8 +51,18 @@ public:
     // void fetchAround(Snowflake channelId, Snowflake targetId, int limit = 50);
 
     void sendMessage(Snowflake channelId, const QString &content, const QString &nonce);
+    struct AckEntry
+    {
+        Snowflake channelId;
+        Snowflake messageId;
+        int readStateType = 0;
+    };
 
-    void ensureSubscriptionByChannel(Snowflake guildId);
+    void ackMessage(Snowflake channelId, Snowflake messageId, int flags, int lastViewed);
+    void ackBulk(const QList<AckEntry> &entries);
+
+    void ensureSubscriptionByGuild(Snowflake guildId);
+    void ensureSubscriptionByChannel(Snowflake channelId);
     void requestGuildMembers(Snowflake guildId, const QList<Snowflake> &userIds);
 
     [[nodiscard]] const Proto::PreloadedUserSettings &getSettings() const;
@@ -73,6 +83,8 @@ signals:
     void guildRoleCreated(const GuildRoleCreate &event);
     void guildRoleUpdated(const GuildRoleUpdate &event);
     void guildRoleDeleted(const GuildRoleDelete &event);
+    void messageAcked(const MessageAck &event);
+    void userGuildSettingsUpdated(const UserGuildSettings &settings);
     void messageSendFailed(const QString &nonce, const QString &error);
 
     void errorOccurred(const QString &errorStr);

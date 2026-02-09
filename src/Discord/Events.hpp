@@ -17,6 +17,8 @@ struct Ready : Core::JsonUtils::JsonObject
     Field<QList<QList<Member>>, true> mergedMembers;
     Field<QList<User>, true> users;
     Field<QList<Channel>, true> privateChannels;
+    Field<QList<ReadStateEntry>, true> readState;
+    Field<QList<UserGuildSettings>, true> userGuildSettings;
 
     static Ready fromJson(const QJsonObject &obj)
     {
@@ -27,6 +29,31 @@ struct Ready : Core::JsonUtils::JsonObject
         get(obj, "merged_members", ready.mergedMembers);
         get(obj, "users", ready.users);
         get(obj, "private_channels", ready.privateChannels);
+
+        if (obj.contains("read_state")) {
+            QJsonObject rsObj = obj["read_state"].toObject();
+            if (rsObj.contains("entries")) {
+                QJsonArray arr = rsObj["entries"].toArray();
+                QList<ReadStateEntry> entries;
+                entries.reserve(arr.size());
+                for (const QJsonValue &val : arr)
+                    entries.append(ReadStateEntry::fromJson(val.toObject()));
+                ready.readState = entries;
+            }
+        }
+
+        if (obj.contains("user_guild_settings")) {
+            QJsonObject ugsObj = obj["user_guild_settings"].toObject();
+            if (ugsObj.contains("entries")) {
+                QJsonArray arr = ugsObj["entries"].toArray();
+                QList<UserGuildSettings> entries;
+                entries.reserve(arr.size());
+                for (const QJsonValue &val : arr)
+                    entries.append(UserGuildSettings::fromJson(val.toObject()));
+                ready.userGuildSettings = entries;
+            }
+        }
+
         return ready;
     }
 };
@@ -190,6 +217,26 @@ struct GuildRoleDelete : Core::JsonUtils::JsonObject
         get(obj, "guild_id", event.guildId);
         get(obj, "role_id", event.roleId);
         return event;
+    }
+};
+
+struct MessageAck : Core::JsonUtils::JsonObject
+{
+    Field<Core::Snowflake> channelId;
+    Field<Core::Snowflake> messageId;
+    Field<int, true> mentionCount;
+    Field<int, true> flags;
+    Field<int, true> version;
+
+    static MessageAck fromJson(const QJsonObject &obj)
+    {
+        MessageAck ack;
+        get(obj, "channel_id", ack.channelId);
+        get(obj, "message_id", ack.messageId);
+        get(obj, "mention_count", ack.mentionCount);
+        get(obj, "flags", ack.flags);
+        get(obj, "version", ack.version);
+        return ack;
     }
 };
 

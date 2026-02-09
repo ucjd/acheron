@@ -14,6 +14,7 @@
 #include "Core/UserManager.hpp"
 #include "Core/TypingTracker.hpp"
 #include "Core/Logging.hpp"
+#include "Core/ReadStateManager.hpp"
 #include "Discord/Events.hpp"
 #include "TypingIndicator.hpp"
 
@@ -84,8 +85,10 @@ MainWindow::MainWindow(Session *session, QWidget *parent) : QMainWindow(parent),
     connect(typingTracker, &TypingTracker::typersChanged, this,
             [this]() { typingIndicator->setTypers(typingTracker->getActiveTyperNames()); });
 
-    connect(session, &Session::ready, this,
-            [this](const Discord::Ready &ready) { channelTreeModel->populateFromReady(ready); });
+    connect(session, &Session::ready, this, [this](const Discord::Ready &ready) {
+        channelTreeModel->populateFromReady(ready);
+        channelTree->performDefaultExpansion();
+    });
 
     connect(accountsModel, &AccountsModel::dataChanged, this,
             [this, session](const QModelIndex &topLeft, const QModelIndex &bottomRight,
@@ -144,6 +147,8 @@ void MainWindow::onChannelSelectionChanged(const QModelIndex &current, const QMo
                   node->type != ChannelNode::Type::DMChannel))
         return;
 
+    channelFilterProxy->setSelectedChannel(node->id);
+
     ChannelNode *accountNode = channelTreeModel->getAccountNodeFor(node);
     if (!accountNode) {
         messageInput->setEnabled(false);
@@ -158,6 +163,8 @@ void MainWindow::onChannelSelectionChanged(const QModelIndex &current, const QMo
 
     if (selectedInstance != currentInstance)
         switchActiveInstance(selectedInstance);
+
+    selectedInstance->readState()->setActiveChannel(node->id);
 
     Core::Snowflake userId = selectedInstance->accountId();
     Core::Snowflake channelId = node->id;
@@ -197,6 +204,9 @@ void MainWindow::onChannelSelectionChanged(const QModelIndex &current, const QMo
     }
 
     messages->requestLoadChannel(node->id);
+
+    if (node->isUnread && node->lastMessageId.isValid())
+        selectedInstance->readState()->markChannelAsRead(node->id, node->lastMessageId);
 }
 
 void MainWindow::switchActiveInstance(Core::ClientInstance *newInstance)
@@ -314,6 +324,22 @@ void MainWindow::setupPermanentConnections(Core::ClientInstance *instance)
                     chatModel->refreshUsersInView({});
                 }
             });
+
+    connect(instance, &Core::ClientInstance::readStateChanged, this,
+            [this, instance](Core::Snowflake channelId) {
+                channelTreeModel->updateReadState(channelId, instance->accountId());
+            });
+
+    connect(instance, &Core::ClientInstance::channelLastMessageUpdated, this,
+            [this, instance](Core::Snowflake channelId, Core::Snowflake messageId) {
+                channelTreeModel->updateChannelLastMessageId(channelId, messageId,
+                                                             instance->accountId());
+            });
+
+    connect(instance, &Core::ClientInstance::guildSettingsChanged, this,
+            [this, instance](Core::Snowflake guildId) {
+                channelTreeModel->updateGuildSettings(guildId, instance->accountId());
+            });
 }
 
 void MainWindow::setupUi()
@@ -351,8 +377,32 @@ void MainWindow::setupUi()
     channelTree->setItemDelegate(new ChannelDelegate(channelFilterProxy, channelTree));
     channelTree->setIconSize(QSize(24, 24));
     channelTree->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    channelTree->setFrameShape(QFrame::NoFrame);
     channelTree->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Expanding);
     channelTree->setExpandsOnDoubleClick(false);
+
+    connect(channelTree, &ChannelTreeView::markAsReadRequested, this,
+            [this](const QModelIndex &proxyIndex) {
+                QModelIndex sourceIndex = channelFilterProxy->mapToSource(proxyIndex);
+                auto *node = channelTreeModel->nodeFromIndex(sourceIndex);
+                if (!node)
+                    return;
+
+                ChannelNode *accountNode = channelTreeModel->getAccountNodeFor(node);
+                if (!accountNode)
+                    return;
+
+                ClientInstance *instance = session->client(accountNode->id);
+                if (!instance)
+                    return;
+
+                auto pairs = channelTreeModel->getMarkableChannels(sourceIndex);
+
+                if (pairs.size() == 1)
+                    instance->readState()->markChannelAsRead(pairs.first().first, pairs.first().second);
+                else if (!pairs.isEmpty())
+                    instance->readState()->markChannelsAsRead(pairs);
+            });
 
     chatView->setModel(chatModel);
     chatView->setItemDelegate(new ChatDelegate(chatView));
@@ -391,7 +441,7 @@ void MainWindow::setupUi()
             &MainWindow::onChannelSelectionChanged);
 
     layout->addWidget(splitter);
-    layout->setContentsMargins(4, 0, 4, 0);
+    layout->setContentsMargins(0, 0, 4, 0);
     setCentralWidget(central);
 }
 

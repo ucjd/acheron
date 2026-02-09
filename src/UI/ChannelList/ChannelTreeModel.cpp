@@ -1,6 +1,7 @@
 #include "ChannelTreeModel.hpp"
 
 #include <Core/ClientInstance.hpp>
+#include <Core/ReadStateManager.hpp>
 #include <Core/Logging.hpp>
 #include <Storage/DatabaseManager.hpp>
 #include <Storage/ChannelRepository.hpp>
@@ -174,14 +175,20 @@ QVariant ChannelTreeModel::data(const QModelIndex &index, int role) const
 
     if (role == IdRole)
         return static_cast<quint64>(node->id);
-    if (role == UnreadCountRole)
-        return node->unreadCount;
     if (role == TypeRole)
         return static_cast<int>(node->type);
     if (role == PositionRole)
         return node->position;
     if (role == LastMessageIdRole)
         return static_cast<quint64>(node->lastMessageId);
+    if (role == IsUnreadRole)
+        return node->isUnread;
+    if (role == MentionCountRole)
+        return node->mentionCount;
+    if (role == IsMutedRole)
+        return node->isMuted;
+    if (role == CollapsedRole)
+        return node->collapsed;
 
     return {};
 }
@@ -385,6 +392,9 @@ void ChannelTreeModel::populateFromReady(const Discord::Ready &ready)
         }
         endInsertRows();
     }
+
+    initChannelReadStates(accNode, instance);
+    recomputeSubtreeAggregates(accNode);
 }
 
 ChannelNode *ChannelTreeModel::getAccountNodeFor(ChannelNode *node)
@@ -431,6 +441,9 @@ std::unique_ptr<ChannelNode> ChannelTreeModel::createGuildNode(const Discord::Ga
             node->position = channel.position;
             node->parentId =
                     channel.parentId.hasValue() ? channel.parentId.get() : Core::Snowflake();
+            node->lastMessageId = channel.lastMessageId.hasValue()
+                                          ? channel.lastMessageId.get()
+                                          : Core::Snowflake();
 
             if (channel.parentId.hasValue() && channel.parentId->isValid()) {
                 if (categoryMap.contains(channel.parentId.get()))
@@ -798,6 +811,161 @@ void ChannelTreeModel::invalidateGuildData(Snowflake guildId)
     }
 }
 
+void ChannelTreeModel::updateReadState(Snowflake channelId, Snowflake accountId)
+{
+    ChannelNode *accNode = accountNodes.value(accountId, nullptr);
+    if (!accNode)
+        return;
+
+    ChannelNode *channelNode = findChannelTreeNode(channelId, accNode);
+    if (!channelNode)
+        return;
+
+    auto *instance = session->client(accountId);
+    if (!instance)
+        return;
+
+    // determine guildId for this channel
+    ChannelNode *guildNode = findGuildNode(channelNode);
+    Snowflake guildId = guildNode ? guildNode->id : Snowflake::Invalid;
+
+    bool wasMuted = channelNode->isMuted;
+    bool wasUnread = channelNode->isUnread;
+    int oldMentions = channelNode->mentionCount;
+
+    bool isDM = channelNode->type == ChannelNode::Type::DMChannel;
+    auto state = instance->readState()->computeChannelReadState(channelNode->id, guildId, isDM);
+    applyChannelReadState(channelNode, state);
+
+    if (channelNode->isMuted != wasMuted || channelNode->isUnread != wasUnread ||
+        channelNode->mentionCount != oldMentions) {
+        QModelIndex idx = indexForNode(channelNode);
+        if (idx.isValid())
+            emit dataChanged(idx, idx, { IsUnreadRole, MentionCountRole, IsMutedRole });
+
+        // propagate changes upward through the tree
+        if (channelNode->parent)
+            updateNodeAggregates(channelNode->parent);
+    }
+}
+
+void ChannelTreeModel::updateGuildSettings(Snowflake guildId, Snowflake accountId)
+{
+    ChannelNode *accNode = accountNodes.value(accountId, nullptr);
+    if (!accNode)
+        return;
+
+    auto *instance = session->client(accountId);
+    if (!instance)
+        return;
+
+    ChannelNode *targetNode = nullptr;
+    if (guildId == Snowflake(0)) {
+        for (const auto &child : accNode->children) {
+            if (child->type == ChannelNode::Type::DMHeader) {
+                targetNode = child.get();
+                break;
+            }
+        }
+    } else {
+        targetNode = findGuildNodeById(guildId, accNode);
+    }
+
+    if (!targetNode)
+        return;
+
+    updateChildrenReadState(targetNode, guildId, instance);
+    updateNodeAggregates(targetNode);
+}
+
+void ChannelTreeModel::applyChannelReadState(ChannelNode *node, const Core::ChannelReadState &state)
+{
+    node->isUnread = state.isUnread;
+    node->mentionCount = state.mentionCount;
+    node->isMuted = state.isMuted;
+}
+
+static bool isContainerType(ChannelNode::Type type)
+{
+    return type == ChannelNode::Type::Category || type == ChannelNode::Type::Server ||
+           type == ChannelNode::Type::Folder;
+}
+
+void ChannelTreeModel::aggregateChildren(ChannelNode *node)
+{
+    node->mentionCount = 0;
+    node->isUnread = false;
+    for (const auto &child : node->children) {
+        if (child->isUnread && !child->isMuted)
+            node->isUnread = true;
+        node->mentionCount += child->mentionCount;
+    }
+}
+
+void ChannelTreeModel::recomputeSubtreeAggregates(ChannelNode *node)
+{
+    for (const auto &child : node->children)
+        recomputeSubtreeAggregates(child.get());
+
+    if (isContainerType(node->type))
+        aggregateChildren(node);
+}
+
+void ChannelTreeModel::updateNodeAggregates(ChannelNode *node)
+{
+    if (!node || !isContainerType(node->type))
+        return;
+
+    int oldMentionCount = node->mentionCount;
+    bool oldIsUnread = node->isUnread;
+
+    aggregateChildren(node);
+
+    if (oldMentionCount != node->mentionCount || oldIsUnread != node->isUnread) {
+        QModelIndex idx = indexForNode(node);
+        if (idx.isValid())
+            emit dataChanged(idx, idx, { IsUnreadRole, MentionCountRole });
+
+        if (node->parent)
+            updateNodeAggregates(node->parent);
+    }
+}
+
+void ChannelTreeModel::initChannelReadStates(ChannelNode *node, Core::ClientInstance *instance)
+{
+    if (node->type == ChannelNode::Type::Channel ||
+        node->type == ChannelNode::Type::DMChannel) {
+        ChannelNode *guildNode = findGuildNode(node);
+        Snowflake guildId = guildNode ? guildNode->id : Snowflake::Invalid;
+        bool isDM = node->type == ChannelNode::Type::DMChannel;
+        auto state = instance->readState()->computeChannelReadState(node->id, guildId, isDM);
+        applyChannelReadState(node, state);
+    }
+
+    for (const auto &child : node->children)
+        initChannelReadStates(child.get(), instance);
+}
+
+void ChannelTreeModel::updateChildrenReadState(ChannelNode *node, Snowflake guildId,
+                                               Core::ClientInstance *instance)
+{
+    for (const auto &child : node->children) {
+        if (child->type == ChannelNode::Type::Channel ||
+            child->type == ChannelNode::Type::DMChannel) {
+            bool isDM = child->type == ChannelNode::Type::DMChannel;
+            auto state = instance->readState()->computeChannelReadState(child->id, guildId, isDM);
+            applyChannelReadState(child.get(), state);
+
+            QModelIndex idx = indexForNode(child.get());
+            if (idx.isValid())
+                emit dataChanged(idx, idx, { IsUnreadRole, MentionCountRole, IsMutedRole });
+        }
+
+        if (!child->children.empty())
+            updateChildrenReadState(child.get(), guildId, instance);
+    }
+}
+
 void ChannelTreeModel::emitDataChangedRecursive(const QModelIndex &index)
 {
     if (!index.isValid())
@@ -811,6 +979,56 @@ void ChannelTreeModel::emitDataChangedRecursive(const QModelIndex &index)
         if (child.isValid())
             emitDataChangedRecursive(child);
     }
+}
+
+void ChannelTreeModel::toggleCollapsed(const QModelIndex &index)
+{
+    ChannelNode *node = nodeFromIndex(index);
+    if (!node)
+        return;
+
+    node->collapsed = !node->collapsed;
+    emit dataChanged(index, index, { CollapsedRole });
+}
+
+void ChannelTreeModel::updateChannelLastMessageId(Snowflake channelId, Snowflake messageId,
+                                                  Snowflake accountId)
+{
+    ChannelNode *accNode = accountNodes.value(accountId, nullptr);
+    if (!accNode)
+        return;
+
+    ChannelNode *channelNode = findChannelTreeNode(channelId, accNode);
+    if (!channelNode)
+        return;
+
+    if (messageId <= channelNode->lastMessageId)
+        return;
+
+    channelNode->lastMessageId = messageId;
+    updateReadState(channelId, accountId);
+}
+
+void ChannelTreeModel::collectMarkableChannels(ChannelNode *node,
+                                               QList<QPair<Snowflake, Snowflake>> &out)
+{
+    if (node->type == ChannelNode::Type::Channel ||
+        node->type == ChannelNode::Type::DMChannel) {
+        if (node->lastMessageId.isValid())
+            out.append({ node->id, node->lastMessageId });
+        return;
+    }
+    for (auto &child : node->children)
+        collectMarkableChannels(child.get(), out);
+}
+
+QList<QPair<Snowflake, Snowflake>> ChannelTreeModel::getMarkableChannels(const QModelIndex &index)
+{
+    QList<QPair<Snowflake, Snowflake>> result;
+    ChannelNode *node = nodeFromIndex(index);
+    if (node)
+        collectMarkableChannels(node, result);
+    return result;
 }
 
 } // namespace UI

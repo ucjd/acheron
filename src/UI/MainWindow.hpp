@@ -21,6 +21,8 @@ class ChannelTreeModel;
 class ChannelFilterProxyModel;
 class AccountsWindow;
 class AccountsModel;
+class ChannelTreeView;
+struct ChannelNode;
 class TypingIndicator;
 } // namespace UI
 } // namespace Acheron
@@ -53,7 +55,7 @@ private:
     ChatView *chatView;
     ChatModel *chatModel;
 
-    QTreeView *channelTree;
+    ChannelTreeView *channelTree;
     ChannelTreeModel *channelTreeModel;
     ChannelFilterProxyModel *channelFilterProxy;
 

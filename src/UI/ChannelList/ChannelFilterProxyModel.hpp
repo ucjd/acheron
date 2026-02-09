@@ -14,9 +14,17 @@ class ChannelFilterProxyModel : public QSortFilterProxyModel
 {
     Q_OBJECT
 public:
+    enum Roles {
+        SelectedRole = Qt::UserRole,
+    };
+
     explicit ChannelFilterProxyModel(Core::Session *session, QObject *parent = nullptr);
 
     void setSourceModel(QAbstractItemModel *sourceModel) override;
+    QVariant data(const QModelIndex &index, int role) const override;
+
+    void setSelectedChannel(Core::Snowflake channelId);
+    Core::Snowflake selectedChannel() const { return selectedChannelId; }
 
 public slots:
     void invalidateFilter();
@@ -28,9 +36,11 @@ protected:
 private:
     bool hasVisibleChildren(const QModelIndex &parent) const;
     Core::Snowflake getUserIdForNode(const QModelIndex &index) const;
+    bool hasChannelViewPermission(const QModelIndex &sourceIndex) const;
 
     Core::Session *session;
     ChannelTreeModel *channelModel;
+    Core::Snowflake selectedChannelId;
 };
 
 } // namespace UI
