@@ -25,7 +25,7 @@ QFont getFontForIndex(const QAbstractItemView *view, const QModelIndex &index)
 QRect avatarRectForRow(const QRect &rowRect, bool hasSeparator)
 {
     int topOffset = hasSeparator ? separatorHeight() : 0;
-    return QRect(rowRect.left() + padding(), rowRect.top() + padding() + topOffset, avatarSize(),
+    return QRect(rowRect.left() + padding(), rowRect.top() + blockTopPadding() + topOffset, avatarSize(),
                  avatarSize());
 }
 
@@ -34,7 +34,8 @@ QRect headerRectForRow(const QRect &rowRect, const QFontMetrics &fm, bool hasSep
     int topOffset = hasSeparator ? separatorHeight() : 0;
     int left = rowRect.left() + padding() + avatarSize() + padding();
     int width = rowRect.right() - left - padding();
-    return QRect(left, rowRect.top() + padding() + topOffset, width, fm.height());
+    int capDrop = fm.ascent() - fm.capHeight();
+    return QRect(left, rowRect.top() + blockTopPadding() + topOffset - capDrop, width, fm.height());
 }
 
 QRect textRectForRow(const QRect &rowRect, bool showHeader, const QFontMetrics &fm,
@@ -46,11 +47,12 @@ QRect textRectForRow(const QRect &rowRect, bool showHeader, const QFontMetrics &
     if (width < 10)
         width = 10;
 
+    int capDrop = fm.ascent() - fm.capHeight();
     int top = rowRect.top() + topOffset;
     if (showHeader)
-        top += padding() + fm.height();
+        top += blockTopPadding() - capDrop + fm.height();
     else
-        top += 1;
+        top += 0;
 
     int height = rowRect.bottom() - top - padding() + 1;
     if (height < 0)
@@ -492,11 +494,11 @@ MessageLayout calculateMessageLayout(const LayoutContext &ctx)
 
     int replyOffset = 0;
     if (layout.hasReply) {
-        int replyTop = ctx.rowTop + (ctx.hasSeparator ? separatorHeight() : 0);
+        int replyTop = ctx.rowTop + padding() + (ctx.hasSeparator ? separatorHeight() : 0);
         int replyLeft = padding() + avatarSize() + padding();
         int replyWidth = ctx.rowWidth - replyLeft - padding();
         layout.replyRect = QRect(replyLeft, replyTop, replyWidth, replyBarHeight());
-        replyOffset = replyBarHeight();
+        replyOffset = padding() + replyBarHeight();
     }
 
     int textLeft = padding() + avatarSize() + padding();
@@ -507,10 +509,11 @@ MessageLayout calculateMessageLayout(const LayoutContext &ctx)
     int separatorOffset = ctx.hasSeparator ? separatorHeight() : 0;
     int headerAreaTop = ctx.rowTop + separatorOffset + replyOffset;
 
+    int capDrop = fm.ascent() - fm.capHeight();
     if (layout.hasReply) {
         // Reply messages: no extra top padding, reply bar provides the visual gap
         layout.avatarRect = QRect(padding(), headerAreaTop, avatarSize(), avatarSize());
-        layout.headerRect = QRect(textLeft, headerAreaTop, textWidth, fm.height());
+        layout.headerRect = QRect(textLeft, headerAreaTop - capDrop, textWidth, fm.height());
     } else {
         QRect baseRowRect(0, ctx.rowTop, ctx.rowWidth, 10000);
         layout.avatarRect = avatarRectForRow(baseRowRect, ctx.hasSeparator);
@@ -525,27 +528,27 @@ MessageLayout calculateMessageLayout(const LayoutContext &ctx)
 
     int textTop;
     if (layout.hasReply) {
-        textTop = headerAreaTop;
+        textTop = headerAreaTop - capDrop;
         if (ctx.showHeader)
             textTop += fm.height();
     } else {
         textTop = ctx.rowTop + separatorOffset;
         if (ctx.showHeader)
-            textTop += padding() + fm.height();
+            textTop += blockTopPadding() - capDrop + fm.height();
         else
-            textTop += 1;
+            textTop += 0;
     }
 
     layout.textRect = QRect(textLeft, textTop, textWidth, layout.textHeight);
 
     int totalHeight = 0;
     if (layout.hasReply) {
-        totalHeight = replyBarHeight() + fm.height() + layout.textHeight + padding();
+        totalHeight = padding() + replyBarHeight() - capDrop + fm.height() + layout.textHeight + padding() / 2;
     } else if (ctx.showHeader) {
-        int contentHeight = padding() + fm.height() + layout.textHeight + padding();
+        int contentHeight = blockTopPadding() - capDrop + fm.height() + layout.textHeight + padding() / 2;
         totalHeight = contentHeight;
     } else {
-        totalHeight = layout.textHeight + padding() + 1;
+        totalHeight = layout.textHeight + padding() / 2;
     }
 
     if (ctx.hasSeparator)

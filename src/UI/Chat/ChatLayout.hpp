@@ -16,6 +16,10 @@ constexpr int padding() noexcept
 {
     return 8;
 }
+constexpr int blockTopPadding() noexcept
+{
+    return 14;
+}
 constexpr int avatarSize() noexcept
 {
     return 32;

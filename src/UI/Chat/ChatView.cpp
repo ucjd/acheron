@@ -485,6 +485,10 @@ void ChatView::startInlineEdit(const QModelIndex &index)
         QFontMetrics fm(font);
         QRect textRect = ChatLayout::textRectForRow(itemRect, showHeader, fm, hasSeparator);
 
+        ReplyData reply = currentEditingIndex.data(ChatModel::ReplyDataRole).value<ReplyData>();
+        if (reply.state != ReplyData::State::None)
+            textRect.translate(0, ChatLayout::replyBarHeight() - ChatLayout::padding());
+
         int editHeight = qMax(InlineEditMinHeight, itemRect.bottom() - textRect.top() - 4);
         QRect editRect(textRect.left(), textRect.top(), textRect.width(), editHeight);
 
