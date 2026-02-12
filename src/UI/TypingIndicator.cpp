@@ -24,7 +24,8 @@ TypingIndicator::TypingIndicator(QWidget *parent) : QWidget(parent)
 
     layout->addStretch();
 
-    setVisible(false);
+    setFixedHeight(sizeHint().height());
+    label->setVisible(false);
     setAttribute(Qt::WA_TransparentForMouseEvents);
 }
 
@@ -36,12 +37,12 @@ void TypingIndicator::setRoleColorResolver(RoleColorResolver resolver)
 void TypingIndicator::setTypers(const QList<Core::TyperInfo> &typers)
 {
     if (typers.isEmpty()) {
-        setVisible(false);
+        label->setVisible(false);
         return;
     }
 
     label->setText(formatText(typers));
-    setVisible(true);
+    label->setVisible(true);
 }
 
 QString TypingIndicator::coloredName(const Core::TyperInfo &typer)
