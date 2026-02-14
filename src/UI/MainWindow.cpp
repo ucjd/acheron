@@ -7,6 +7,7 @@
 #include "ChannelList/ChannelFilterProxyModel.hpp"
 #include "ChannelList/ChannelDelegate.hpp"
 #include "ChannelList/ChannelTreeView.hpp"
+#include "TabBar/TabBar.hpp"
 #include "Accounts/AccountsWindow.hpp"
 #include "Accounts/AccountsModel.hpp"
 #include "Core/ClientInstance.hpp"
@@ -60,6 +61,8 @@ MainWindow::MainWindow(Session *session, QWidget *parent) : QMainWindow(parent),
 
     setupUi();
     setupMenu();
+
+    qApp->installEventFilter(this);
 
     typingIndicator->setRoleColorResolver(
             [this](Snowflake userId, Snowflake guildId) { return resolveRoleColor(userId, guildId); });
@@ -117,6 +120,23 @@ void MainWindow::closeEvent(QCloseEvent *event)
 
     event->accept();
 }
+
+bool MainWindow::eventFilter(QObject *obj, QEvent *ev)
+{
+    if (ev->type() == QEvent::MouseButtonPress && isActiveWindow()) {
+        auto *me = static_cast<QMouseEvent *>(ev);
+        if (me->button() == Qt::BackButton) {
+            tabBar->navigateBack();
+            return true;
+        }
+        if (me->button() == Qt::ForwardButton) {
+            tabBar->navigateForward();
+            return true;
+        }
+    }
+    return QMainWindow::eventFilter(obj, ev);
+}
+
 void MainWindow::onChannelSelectionChanged(const QModelIndex &current, const QModelIndex &previous)
 {
     if (!current.isValid())
@@ -209,6 +229,24 @@ void MainWindow::onChannelSelectionChanged(const QModelIndex &current, const QMo
 
     if (node->isUnread && node->lastMessageId.isValid())
         selectedInstance->readState()->markChannelAsRead(node->id, node->lastMessageId);
+
+    {
+        ChannelNode *serverNode = node;
+        while (serverNode && serverNode->type != ChannelNode::Type::Server)
+            serverNode = serverNode->parent;
+
+        TabEntry entry;
+        entry.channelId = node->id;
+        entry.guildId = serverNode ? serverNode->id : Snowflake::Invalid;
+        entry.accountId = accountNode->id;
+        entry.name = node->name;
+        entry.isDm = (node->type == ChannelNode::Type::DMChannel);
+        if (serverNode && !serverNode->TEMP_iconHash.isEmpty())
+            entry.iconUrl = QStringLiteral("https://cdn.discordapp.com/icons/%1/%2.png?size=64")
+                                    .arg(quint64(serverNode->id))
+                                    .arg(serverNode->TEMP_iconHash);
+        tabBar->updateCurrentTab(entry);
+    }
 }
 
 void MainWindow::switchActiveInstance(Core::ClientInstance *newInstance)
@@ -337,12 +375,14 @@ void MainWindow::setupPermanentConnections(Core::ClientInstance *instance)
     connect(instance, &Core::ClientInstance::readStateChanged, this,
             [this, instance](Core::Snowflake channelId) {
                 channelTreeModel->updateReadState(channelId, instance->accountId());
+                refreshTabReadStates();
             });
 
     connect(instance, &Core::ClientInstance::channelLastMessageUpdated, this,
             [this, instance](Core::Snowflake channelId, Core::Snowflake messageId) {
                 channelTreeModel->updateChannelLastMessageId(channelId, messageId,
                                                              instance->accountId());
+                refreshTabReadStates();
             });
 
     connect(instance, &Core::ClientInstance::guildSettingsChanged, this,
@@ -375,11 +415,13 @@ void MainWindow::setupUi()
     rightLayout->setSpacing(0);
 
     connectionBanner = new ConnectionBanner(rightSideWidget);
+    tabBar = new TabBar(session->getImageManager(), rightSideWidget);
     chatView = new ChatView(rightSideWidget);
     messageInput = new MessageInput(rightSideWidget);
     typingIndicator = new TypingIndicator(rightSideWidget);
 
     rightLayout->addWidget(connectionBanner, 0);
+    rightLayout->addWidget(tabBar, 0);
     rightLayout->addWidget(chatView, 1);
     rightLayout->addWidget(typingIndicator, 0);
     rightLayout->addWidget(messageInput, 0);
@@ -536,9 +578,137 @@ void MainWindow::setupUi()
     connect(channelTree->selectionModel(), &QItemSelectionModel::currentChanged, this,
             &MainWindow::onChannelSelectionChanged);
 
+    connect(tabBar, &TabBar::tabChanged, this, &MainWindow::switchToTabEntry);
+
+    connect(channelTree, &ChannelTreeView::openInNewTabRequested, this,
+            [this](const QModelIndex &proxyIndex) {
+                QModelIndex sourceIndex = channelFilterProxy->mapToSource(proxyIndex);
+                auto *node = channelTreeModel->nodeFromIndex(sourceIndex);
+                if (!node)
+                    return;
+
+                ChannelNode *accountNode = channelTreeModel->getAccountNodeFor(node);
+                if (!accountNode)
+                    return;
+
+                ChannelNode *guildNode = node;
+                while (guildNode && guildNode->type != ChannelNode::Type::Server)
+                    guildNode = guildNode->parent;
+                Snowflake guildId = guildNode ? guildNode->id : Snowflake::Invalid;
+
+                TabEntry entry;
+                entry.channelId = node->id;
+                entry.guildId = guildId;
+                entry.accountId = accountNode->id;
+                entry.name = node->name;
+                entry.isDm = (node->type == ChannelNode::Type::DMChannel);
+                if (guildNode && !guildNode->TEMP_iconHash.isEmpty())
+                    entry.iconUrl = QStringLiteral("https://cdn.discordapp.com/icons/%1/%2.png?size=64")
+                                            .arg(quint64(guildNode->id))
+                                            .arg(guildNode->TEMP_iconHash);
+                tabBar->openNewTab(entry);
+            });
+
     layout->addWidget(mainSplitter);
     layout->setContentsMargins(0, 0, 4, 0);
     setCentralWidget(central);
+}
+
+void MainWindow::switchToTabEntry(const TabEntry &entry)
+{
+    if (!entry.channelId.isValid())
+        return;
+
+    activateChannel(entry);
+}
+
+void MainWindow::activateChannel(const TabEntry &entry)
+{
+    // update the proxy selected channel so the delegate highlights correctly,
+    // and clear the trees own selection so no stale highlight remains
+    channelFilterProxy->setSelectedChannel(entry.channelId);
+    {
+        QSignalBlocker blocker(channelTree->selectionModel());
+        channelTree->selectionModel()->clearSelection();
+        channelTree->selectionModel()->clearCurrentIndex();
+    }
+    channelTree->viewport()->update();
+
+    ClientInstance *instance = session->client(entry.accountId);
+    if (!instance) {
+        messageInput->setEnabled(false);
+        return;
+    }
+
+    if (instance != currentInstance)
+        switchActiveInstance(instance);
+
+    instance->readState()->setActiveChannel(entry.channelId);
+
+    Snowflake userId = instance->accountId();
+
+    if (entry.isDm) {
+        messageInput->setEnabled(true);
+        messageInput->setPlaceholder("Message @" + entry.name);
+        chatView->setCanPinMessages(true);
+        chatView->setCanManageMessages(false);
+        memberListView->hide();
+        instance->memberList()->clear();
+    } else {
+        bool canSend = instance->permissions()->hasChannelPermission(userId, entry.channelId, Discord::Permission::SEND_MESSAGES);
+        bool canPin = instance->permissions()->hasChannelPermission(userId, entry.channelId, Discord::Permission::PIN_MESSAGES);
+        bool canManage = instance->permissions()->hasChannelPermission(userId, entry.channelId, Discord::Permission::MANAGE_MESSAGES);
+
+        messageInput->setEnabled(canSend);
+        chatView->setCanPinMessages(canPin);
+        chatView->setCanManageMessages(canManage);
+
+        if (canSend)
+            messageInput->setPlaceholder("Message #" + entry.name);
+        else
+            messageInput->setPlaceholder("You do not have permission to send messages");
+
+        if (entry.guildId.isValid()) {
+            memberListView->show();
+            instance->memberList()->setActiveChannel(entry.guildId, entry.channelId);
+        }
+    }
+
+    if (entry.channelId != chatModel->getActiveChannelId()) {
+        if (entry.guildId != cachedGuildId) {
+            cachedGuildId = entry.guildId;
+            userColorCache.clear();
+        }
+
+        chatModel->setActiveChannel(entry.channelId, entry.guildId);
+        typingTracker->setActiveChannel(entry.channelId);
+        messageInput->clearReplyTarget();
+    }
+
+    instance->messages()->requestLoadChannel(entry.channelId);
+
+    Snowflake lastMsgId = instance->readState()->getChannelLastMessageId(entry.channelId);
+    if (lastMsgId.isValid())
+        instance->readState()->markChannelAsRead(entry.channelId, lastMsgId);
+
+    refreshTabReadStates();
+}
+
+void MainWindow::refreshTabReadStates()
+{
+    for (int i = 0; i < tabBar->tabCount(); ++i) {
+        const TabEntry &entry = tabBar->tabEntry(i);
+        if (!entry.channelId.isValid())
+            continue;
+
+        ClientInstance *inst = session->client(entry.accountId);
+        if (!inst)
+            continue;
+
+        auto state = inst->readState()->computeChannelReadState(
+                entry.channelId, entry.guildId, entry.isDm);
+        tabBar->updateChannelReadState(entry.channelId, state.isUnread, state.mentionCount);
+    }
 }
 
 void MainWindow::setupMenu()

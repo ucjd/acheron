@@ -93,8 +93,19 @@ void ChannelTreeView::contextMenuEvent(QContextMenuEvent *event)
         return;
 
     bool isUnread = sourceIndex.data(ChannelTreeModel::IsUnreadRole).toBool();
+    bool isChannel = (nodeType == ChannelNode::Type::Channel ||
+                      nodeType == ChannelNode::Type::DMChannel);
 
     QMenu menu(this);
+
+    if (isChannel) {
+        QAction *openTabAction = menu.addAction(tr("Open in New Tab"));
+        connect(openTabAction, &QAction::triggered, this, [this, proxyIndex]() {
+            emit openInNewTabRequested(proxyIndex);
+        });
+        menu.addSeparator();
+    }
+
     QAction *markReadAction = menu.addAction(tr("Mark As Read"));
     markReadAction->setEnabled(isUnread);
 

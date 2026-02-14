@@ -282,6 +282,12 @@ void ReadStateManager::updateChannelLastMessageId(Snowflake channelId, Snowflake
         channelLastMessageIds.insert(channelId, messageId);
 }
 
+Snowflake ReadStateManager::getChannelLastMessageId(Snowflake channelId) const
+{
+    auto it = channelLastMessageIds.constFind(channelId);
+    return it != channelLastMessageIds.constEnd() ? it.value() : Snowflake::Invalid;
+}
+
 const Discord::UserGuildSettings *ReadStateManager::getGuildSettings(Snowflake guildId) const
 {
     auto it = guildSettingsMap.constFind(guildId);

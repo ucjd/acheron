@@ -15,6 +15,7 @@ public:
 
 signals:
     void markAsReadRequested(const QModelIndex &proxyIndex);
+    void openInNewTabRequested(const QModelIndex &proxyIndex);
 
 protected:
     void contextMenuEvent(QContextMenuEvent *event) override;

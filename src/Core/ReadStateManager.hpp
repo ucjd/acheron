@@ -53,6 +53,7 @@ public:
     void handleMessageCreated(Snowflake channelId, Snowflake messageId, bool isMention);
 
     void updateChannelLastMessageId(Snowflake channelId, Snowflake messageId);
+    [[nodiscard]] Snowflake getChannelLastMessageId(Snowflake channelId) const;
 
     const Discord::UserGuildSettings *getGuildSettings(Snowflake guildId) const;
     std::optional<Discord::ReadStateEntry> getReadStateEntry(Snowflake channelId) const;

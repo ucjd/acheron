@@ -28,6 +28,8 @@ class ChannelTreeView;
 struct ChannelNode;
 class TypingIndicator;
 class ConnectionBanner;
+class TabBar;
+struct TabEntry;
 } // namespace UI
 } // namespace Acheron
 
@@ -42,6 +44,7 @@ public:
 
 protected:
     void closeEvent(QCloseEvent *event) override;
+    bool eventFilter(QObject *obj, QEvent *event) override;
 
 private slots:
     void onChannelSelectionChanged(const QModelIndex &current, const QModelIndex &previous);
@@ -51,6 +54,9 @@ private slots:
 private:
     void switchActiveInstance(Core::ClientInstance *instance);
     void setupPermanentConnections(Core::ClientInstance *instance);
+    void switchToTabEntry(const TabEntry &entry);
+    void activateChannel(const TabEntry &entry);
+    void refreshTabReadStates();
     QColor resolveRoleColor(Core::Snowflake userId, Core::Snowflake guildId);
 
 private:
@@ -66,6 +72,7 @@ private:
 
     AccountsModel *accountsModel;
 
+    TabBar *tabBar;
     MessageInput *messageInput;
     TypingIndicator *typingIndicator;
     ConnectionBanner *connectionBanner;
