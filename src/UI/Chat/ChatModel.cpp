@@ -205,7 +205,7 @@ QVariant ChatModel::data(const QModelIndex &index, int role) const
             return imageManager->placeholder(desiredSize);
 
         QUrl url = avatarUrlResolver(msg.author.get());
-        QPixmap pixmap = imageManager->get(url, desiredSize);
+        QPixmap pixmap = imageManager->get(url, desiredSize, Core::PinGroup::ChatView);
 
         if (!imageManager->isCached(url, desiredSize)) {
             bool alreadyWaiting = false;
@@ -782,6 +782,8 @@ void ChatModel::setActiveChannel(Snowflake channelId, Snowflake guildId)
 {
     if (currentChannelId == channelId)
         return;
+
+    imageManager->unpinGroup(Core::PinGroup::ChatView);
 
     currentChannelId = channelId;
     currentGuildId = guildId;

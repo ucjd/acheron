@@ -112,7 +112,7 @@ QVariant ChannelTreeModel::data(const QModelIndex &index, int role) const
                                           .arg(quint64(node->id))
                                           .arg(node->TEMP_iconHash)
                                           .arg(desiredSize.width()));
-            QPixmap pixmap = session->getImageManager()->get(TEMPORARY, desiredSize);
+            QPixmap pixmap = session->getImageManager()->get(TEMPORARY, desiredSize, Core::PinGroup::ChannelList);
 
             if (!session->getImageManager()->isCached(TEMPORARY, desiredSize)) {
                 bool alreadyWaiting = false;
@@ -149,7 +149,7 @@ QVariant ChannelTreeModel::data(const QModelIndex &index, int role) const
             }
 
             if (!avatarUrl.isEmpty()) {
-                QPixmap pixmap = session->getImageManager()->get(avatarUrl, desiredSize);
+                QPixmap pixmap = session->getImageManager()->get(avatarUrl, desiredSize, Core::PinGroup::ChannelList);
 
                 if (!session->getImageManager()->isCached(avatarUrl, desiredSize)) {
                     bool alreadyWaiting = false;

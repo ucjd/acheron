@@ -11,11 +11,16 @@ class QNetworkAccessManager;
 namespace Acheron {
 namespace Core {
 
+enum class PinGroup {
+    None,
+    ChannelList,
+    ChatView,
+};
+
 struct ImageRequestKey
 {
     QUrl url;
     QSize size;
-    // QString extension;
 
     bool operator==(const ImageRequestKey &other) const
     {
@@ -33,20 +38,25 @@ public:
 
     [[nodiscard]] bool isCached(const QUrl &url, const QSize &size);
     void assign(QLabel *label, const QUrl &url, const QSize &size);
-    QPixmap get(const QUrl &url, const QSize &size);
+    QPixmap get(const QUrl &url, const QSize &size, PinGroup pin = PinGroup::None);
     [[nodiscard]] QPixmap placeholder(const QSize &size);
+
+    void unpinGroup(PinGroup group);
 
 signals:
     void imageFetched(const QUrl &url, const QSize &size, const QPixmap &pixmap);
 
 private:
-    void request(const QUrl &url, const QSize &size);
-    void fetchFromNetwork(const QUrl &url, const QSize &size);
+    void request(const QUrl &url, const QSize &size, PinGroup pin);
+    void fetchFromNetwork(const QUrl &url, const QSize &size, PinGroup pin);
 
     QNetworkAccessManager *networkManager;
 
     QSet<ImageRequestKey> requests;
+    QHash<ImageRequestKey, PinGroup> pendingPins;
     QCache<ImageRequestKey, QPixmap> cache;
+    QHash<ImageRequestKey, QPixmap> pinnedImages;
+    QMultiHash<PinGroup, ImageRequestKey> pinGroupKeys;
 };
 
 } // namespace Core

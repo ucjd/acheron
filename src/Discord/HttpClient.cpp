@@ -240,7 +240,6 @@ void HttpClient::executeMultipartRequest(const QString &url, const QByteArray &j
         CURL *curl = curl_easy_init();
         HttpResponse response;
 
-
         if (curl) {
             QString certPath = CurlUtils::getCertificatePath();
             if (!certPath.isEmpty())

@@ -288,7 +288,7 @@ void TabBar::paintEvent(QPaintEvent *)
             p.drawText(iconRect, Qt::AlignCenter, QStringLiteral("@"));
             p.restore();
         } else if (!entry.iconUrl.isEmpty()) {
-            QPixmap icon = imageManager->get(entry.iconUrl, QSize(IconSize * 2, IconSize * 2));
+            QPixmap icon = imageManager->get(entry.iconUrl, QSize(IconSize * 2, IconSize * 2), Core::PinGroup::ChannelList);
             if (!icon.isNull()) {
                 p.save();
                 QPainterPath clipPath;
