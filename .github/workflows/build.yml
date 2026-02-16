@@ -29,6 +29,18 @@ jobs:
           modules: qtimageformats
           cache: true
 
+      - name: Bootstrap vcpkg
+        shell: pwsh
+        run: |
+          git -C vendor/libdave/cpp/vcpkg fetch --unshallow
+          vendor/libdave/cpp/vcpkg/bootstrap-vcpkg.bat
+
+      - name: Cache vcpkg packages
+        uses: actions/cache@v4
+        with:
+          path: build/vcpkg_installed
+          key: vcpkg-x64-windows-static-md-${{ hashFiles('vendor/libdave/cpp/vcpkg-alts/openssl_3/vcpkg.json') }}
+
       - name: Install curl-impersonate
         shell: pwsh
         run: |
@@ -43,12 +55,18 @@ jobs:
           $curlDir = "${{ github.workspace }}/curl-impersonate"
           cmake -B build -S . `
             -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} `
+            -DCMAKE_TOOLCHAIN_FILE="${{ github.workspace }}/vendor/libdave/cpp/vcpkg/scripts/buildsystems/vcpkg.cmake" `
+            -DVCPKG_MANIFEST_DIR="${{ github.workspace }}/vendor/libdave/cpp/vcpkg-alts/openssl_3" `
+            -DVCPKG_TARGET_TRIPLET=x64-windows-static-md `
             -DCMAKE_PREFIX_PATH="$env:Qt6_DIR;$curlDir" `
             -DCURL_DIR="$curlDir/lib/cmake/CURL" `
-            -DBUILD_TESTS=OFF
+            -DBUILD_TESTS=ON
 
       - name: Build
         run: cmake --build build --config ${{ matrix.build_type }} --parallel
+
+      - name: Test
+        run: ctest --test-dir build -C ${{ matrix.build_type }} --output-on-failure
 
       - name: Deploy Qt
         shell: pwsh
@@ -69,6 +87,9 @@ jobs:
 
           # Copy curl-impersonate DLLs
           Copy-Item "$curlDir/bin/*.dll" $out -Force
+
+          # Remove test executables from artifact
+          Remove-Item "$out/Test*.exe" -ErrorAction SilentlyContinue
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -96,6 +117,17 @@ jobs:
           modules: qtimageformats
           cache: true
 
+      - name: Bootstrap vcpkg
+        run: |
+          git -C vendor/libdave/cpp/vcpkg fetch --unshallow
+          vendor/libdave/cpp/vcpkg/bootstrap-vcpkg.sh
+
+      - name: Cache vcpkg packages
+        uses: actions/cache@v4
+        with:
+          path: build/vcpkg_installed
+          key: vcpkg-x64-linux-${{ hashFiles('vendor/libdave/cpp/vcpkg-alts/openssl_3/vcpkg.json') }}
+
       - name: Install curl-impersonate
         run: |
           curl -L -o libcurl-impersonate.tar.gz \
@@ -108,12 +140,18 @@ jobs:
         run: >
           cmake -B build -S .
           -DCMAKE_BUILD_TYPE=Release
+          -DCMAKE_TOOLCHAIN_FILE="${{ github.workspace }}/vendor/libdave/cpp/vcpkg/scripts/buildsystems/vcpkg.cmake"
+          -DVCPKG_MANIFEST_DIR="${{ github.workspace }}/vendor/libdave/cpp/vcpkg-alts/openssl_3"
+          -DVCPKG_TARGET_TRIPLET=x64-linux
           -DCMAKE_PREFIX_PATH="$Qt6_DIR"
           -DCURL_LIBRARY=/usr/local/lib/libcurl-impersonate.a
-          -DBUILD_TESTS=OFF
+          -DBUILD_TESTS=ON
 
       - name: Build
         run: cmake --build build --parallel $(nproc)
+
+      - name: Test
+        run: ctest --test-dir build --output-on-failure
 
   build-macos:
     runs-on: macos-latest
@@ -133,6 +171,17 @@ jobs:
           modules: qtimageformats
           cache: true
 
+      - name: Bootstrap vcpkg
+        run: |
+          git -C vendor/libdave/cpp/vcpkg fetch --unshallow
+          vendor/libdave/cpp/vcpkg/bootstrap-vcpkg.sh
+
+      - name: Cache vcpkg packages
+        uses: actions/cache@v4
+        with:
+          path: build/vcpkg_installed
+          key: vcpkg-arm64-osx-${{ hashFiles('vendor/libdave/cpp/vcpkg-alts/openssl_3/vcpkg.json') }}
+
       - name: Install curl-impersonate
         run: |
           curl -L -o libcurl-impersonate.tar.gz \
@@ -144,11 +193,17 @@ jobs:
         run: >
           cmake -B build -S .
           -DCMAKE_BUILD_TYPE=Release
+          -DCMAKE_TOOLCHAIN_FILE="${{ github.workspace }}/vendor/libdave/cpp/vcpkg/scripts/buildsystems/vcpkg.cmake"
+          -DVCPKG_MANIFEST_DIR="${{ github.workspace }}/vendor/libdave/cpp/vcpkg-alts/openssl_3"
+          -DVCPKG_TARGET_TRIPLET=arm64-osx
           -DCMAKE_PREFIX_PATH="$Qt6_DIR"
           -DCURL_INCLUDE_DIR="$(brew --prefix curl)/include"
           -DCURL_LIBRARY="${{ github.workspace }}/curl-impersonate/libcurl-impersonate.a"
           -DCMAKE_EXE_LINKER_FLAGS="-framework SystemConfiguration -liconv -licucore"
-          -DBUILD_TESTS=OFF
+          -DBUILD_TESTS=ON
 
       - name: Build
         run: cmake --build build --parallel $(sysctl -n hw.logicalcpu)
+
+      - name: Test
+        run: ctest --test-dir build --output-on-failure
