@@ -32,14 +32,14 @@ jobs:
       - name: Bootstrap vcpkg
         shell: pwsh
         run: |
-          git -C vendor/libdave/cpp/vcpkg fetch --unshallow
-          vendor/libdave/cpp/vcpkg/bootstrap-vcpkg.bat
+          git -C vendor/vcpkg fetch --unshallow
+          vendor/vcpkg/bootstrap-vcpkg.bat
 
       - name: Cache vcpkg packages
         uses: actions/cache@v4
         with:
           path: build/vcpkg_installed
-          key: vcpkg-x64-windows-static-md-${{ hashFiles('vendor/libdave/cpp/vcpkg-alts/openssl_3/vcpkg.json') }}
+          key: vcpkg-x64-windows-static-md-${{ hashFiles('vcpkg.json') }}
 
       - name: Install curl-impersonate
         shell: pwsh
@@ -55,8 +55,6 @@ jobs:
           $curlDir = "${{ github.workspace }}/curl-impersonate"
           cmake -B build -S . `
             -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} `
-            -DCMAKE_TOOLCHAIN_FILE="${{ github.workspace }}/vendor/libdave/cpp/vcpkg/scripts/buildsystems/vcpkg.cmake" `
-            -DVCPKG_MANIFEST_DIR="${{ github.workspace }}/vendor/libdave/cpp/vcpkg-alts/openssl_3" `
             -DVCPKG_TARGET_TRIPLET=x64-windows-static-md `
             -DCMAKE_PREFIX_PATH="$env:Qt6_DIR;$curlDir" `
             -DCURL_DIR="$curlDir/lib/cmake/CURL" `
@@ -119,14 +117,14 @@ jobs:
 
       - name: Bootstrap vcpkg
         run: |
-          git -C vendor/libdave/cpp/vcpkg fetch --unshallow
-          vendor/libdave/cpp/vcpkg/bootstrap-vcpkg.sh
+          git -C vendor/vcpkg fetch --unshallow
+          vendor/vcpkg/bootstrap-vcpkg.sh
 
       - name: Cache vcpkg packages
         uses: actions/cache@v4
         with:
           path: build/vcpkg_installed
-          key: vcpkg-x64-linux-${{ hashFiles('vendor/libdave/cpp/vcpkg-alts/openssl_3/vcpkg.json') }}
+          key: vcpkg-x64-linux-${{ hashFiles('vcpkg.json') }}
 
       - name: Install curl-impersonate
         run: |
@@ -140,8 +138,6 @@ jobs:
         run: >
           cmake -B build -S .
           -DCMAKE_BUILD_TYPE=Release
-          -DCMAKE_TOOLCHAIN_FILE="${{ github.workspace }}/vendor/libdave/cpp/vcpkg/scripts/buildsystems/vcpkg.cmake"
-          -DVCPKG_MANIFEST_DIR="${{ github.workspace }}/vendor/libdave/cpp/vcpkg-alts/openssl_3"
           -DVCPKG_TARGET_TRIPLET=x64-linux
           -DCMAKE_PREFIX_PATH="$Qt6_DIR"
           -DCURL_LIBRARY=/usr/local/lib/libcurl-impersonate.a
@@ -173,14 +169,14 @@ jobs:
 
       - name: Bootstrap vcpkg
         run: |
-          git -C vendor/libdave/cpp/vcpkg fetch --unshallow
-          vendor/libdave/cpp/vcpkg/bootstrap-vcpkg.sh
+          git -C vendor/vcpkg fetch --unshallow
+          vendor/vcpkg/bootstrap-vcpkg.sh
 
       - name: Cache vcpkg packages
         uses: actions/cache@v4
         with:
           path: build/vcpkg_installed
-          key: vcpkg-arm64-osx-${{ hashFiles('vendor/libdave/cpp/vcpkg-alts/openssl_3/vcpkg.json') }}
+          key: vcpkg-arm64-osx-${{ hashFiles('vcpkg.json') }}
 
       - name: Install curl-impersonate
         run: |
@@ -193,8 +189,6 @@ jobs:
         run: >
           cmake -B build -S .
           -DCMAKE_BUILD_TYPE=Release
-          -DCMAKE_TOOLCHAIN_FILE="${{ github.workspace }}/vendor/libdave/cpp/vcpkg/scripts/buildsystems/vcpkg.cmake"
-          -DVCPKG_MANIFEST_DIR="${{ github.workspace }}/vendor/libdave/cpp/vcpkg-alts/openssl_3"
           -DVCPKG_TARGET_TRIPLET=arm64-osx
           -DCMAKE_PREFIX_PATH="$Qt6_DIR"
           -DCURL_INCLUDE_DIR="$(brew --prefix curl)/include"

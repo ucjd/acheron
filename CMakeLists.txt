@@ -1,4 +1,12 @@
 cmake_minimum_required(VERSION 3.16)
+
+# vcpkg toolchain must be set before project() so find_package is intercepted.
+# Allow override via -DCMAKE_TOOLCHAIN_FILE for users who manage vcpkg externally.
+if(NOT DEFINED CMAKE_TOOLCHAIN_FILE)
+    set(CMAKE_TOOLCHAIN_FILE "${CMAKE_CURRENT_SOURCE_DIR}/vendor/vcpkg/scripts/buildsystems/vcpkg.cmake"
+        CACHE STRING "Vcpkg toolchain file")
+endif()
+
 project(acheron LANGUAGES CXX)
 
 include(qt.cmake)
@@ -69,6 +77,9 @@ if(ACHERON_ENABLE_DAVE)
     message(STATUS "DAVE support enabled")
     set(TESTING OFF CACHE BOOL "" FORCE)
     set(PERSISTENT_KEYS OFF CACHE BOOL "" FORCE)
+    # Prevent libdave's own vcpkg manifest from being processed; our
+    # project-level vcpkg.json already provides all required packages.
+    set(VCPKG_MANIFEST_DIR "${CMAKE_CURRENT_SOURCE_DIR}" CACHE PATH "" FORCE)
     add_subdirectory(vendor/libdave/cpp EXCLUDE_FROM_ALL)
 else()
     message(STATUS "DAVE support disabled")
