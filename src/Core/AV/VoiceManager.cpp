@@ -113,6 +113,13 @@ bool VoiceManager::isConnected() const
            voiceClient->state() == Discord::AV::VoiceClient::State::Connected;
 }
 
+Discord::AV::VoiceClient::State VoiceManager::clientState() const
+{
+    if (!voiceClient)
+        return Discord::AV::VoiceClient::State::Disconnected;
+    return voiceClient->state();
+}
+
 void VoiceManager::connectToVoiceServer(const QString &endpoint, const QString &token)
 {
     if (voiceSessionId.isEmpty()) {

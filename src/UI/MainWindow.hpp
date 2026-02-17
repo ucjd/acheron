@@ -59,6 +59,7 @@ private:
     void activateChannel(const TabEntry &entry);
     void refreshTabReadStates();
     QColor resolveRoleColor(Core::Snowflake userId, Core::Snowflake guildId);
+    void updateVoiceStatusLabel();
 
 private:
     void setupUi();

@@ -23,6 +23,7 @@ public:
     void disconnect();
 
     [[nodiscard]] bool isConnected() const;
+    [[nodiscard]] Discord::AV::VoiceClient::State clientState() const;
     [[nodiscard]] Snowflake currentChannelId() const { return channelId; }
     [[nodiscard]] Snowflake currentGuildId() const { return guildId; }
 
