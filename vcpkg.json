@@ -6,7 +6,6 @@
       "name": "openssl",
       "version>=": "3.0.7"
     },
-    "gtest",
     "mlspp",
     "libsodium",
     "opus"
