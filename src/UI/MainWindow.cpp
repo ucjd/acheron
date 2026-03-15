@@ -718,7 +718,12 @@ void MainWindow::setupUi()
             [this](const QModelIndex &proxyIndex) {
                 QModelIndex sourceIndex = channelFilterProxy->mapToSource(proxyIndex);
                 auto *node = channelTreeModel->nodeFromIndex(sourceIndex);
-                if (!node || node->type != ChannelNode::Type::VoiceChannel)
+                if (!node)
+                    return;
+
+                bool isDM = (node->type == ChannelNode::Type::DMChannel);
+                bool isVoice = (node->type == ChannelNode::Type::VoiceChannel);
+                if (!isDM && !isVoice)
                     return;
 
                 ChannelNode *accountNode = channelTreeModel->getAccountNodeFor(node);
@@ -729,15 +734,20 @@ void MainWindow::setupUi()
                 if (!instance)
                     return;
 
-                ChannelNode *guildNode = node;
-                while (guildNode && guildNode->type != ChannelNode::Type::Server)
-                    guildNode = guildNode->parent;
-                if (!guildNode)
-                    return;
+                if (isDM) {
+                    qCInfo(LogVoice) << "Joining DM call" << node->name << node->id;
+                    instance->discord()->sendVoiceStateUpdate(Snowflake::Invalid, node->id, false, false);
+                } else {
+                    ChannelNode *guildNode = node;
+                    while (guildNode && guildNode->type != ChannelNode::Type::Server)
+                        guildNode = guildNode->parent;
+                    if (!guildNode)
+                        return;
 
-                qCInfo(LogVoice) << "Joining voice channel" << node->name << node->id
-                                 << "in guild" << guildNode->id;
-                instance->discord()->sendVoiceStateUpdate(guildNode->id, node->id, false, false);
+                    qCInfo(LogVoice) << "Joining voice channel" << node->name << node->id
+                                     << "in guild" << guildNode->id;
+                    instance->discord()->sendVoiceStateUpdate(guildNode->id, node->id, false, false);
+                }
             });
 
     connect(channelTree, &ChannelTreeView::disconnectVoiceRequested, this,
@@ -752,17 +762,11 @@ void MainWindow::setupUi()
                     return;
 
                 ClientInstance *instance = session->client(accountNode->id);
-                if (!instance)
+                if (!instance || !instance->isInVoice())
                     return;
 
-                ChannelNode *guildNode = node;
-                while (guildNode && guildNode->type != ChannelNode::Type::Server)
-                    guildNode = guildNode->parent;
-                if (!guildNode)
-                    return;
-
-                qCInfo(LogVoice) << "Disconnecting from voice in guild" << guildNode->id;
-                instance->discord()->sendVoiceStateUpdate(guildNode->id, Snowflake::Invalid, false, false);
+                qCInfo(LogVoice) << "Disconnecting from voice";
+                instance->discord()->sendVoiceStateUpdate(instance->voiceGuildId(), Snowflake::Invalid, false, false);
             });
 
     layout->addWidget(mainSplitter);
@@ -814,7 +818,12 @@ void MainWindow::updateVoiceStatusLabel()
         Core::Snowflake vcId = voiceInstance->voiceChannelId();
         if (vcId.isValid()) {
             ChannelNode *node = channelTreeModel->findChannelTreeNode(vcId);
-            channelName = node ? node->name : QString::number(vcId);
+            if (node) {
+                bool isDm = (node->type == ChannelNode::Type::DMChannel);
+                channelName = isDm ? node->name : ("#" + node->name);
+            } else {
+                channelName = QString::number(vcId);
+            }
         }
     }
     voiceStatusBar->setChannelName(channelName);

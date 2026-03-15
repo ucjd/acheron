@@ -284,7 +284,8 @@ void VoiceManager::connectToVoiceServer(const QString &endpoint, const QString &
     voiceThread = new QThread(this);
     voiceThread->setObjectName("VoiceThread");
 
-    voiceClient = new Discord::AV::VoiceClient(endpoint, token, guildId, channelId, accountId, voiceSessionId);
+    Snowflake serverId = guildId.isValid() ? guildId : channelId;
+    voiceClient = new Discord::AV::VoiceClient(endpoint, token, serverId, channelId, accountId, voiceSessionId);
     audioPipeline = new AudioPipeline;
 
     QList<Snowflake> channelUsers;

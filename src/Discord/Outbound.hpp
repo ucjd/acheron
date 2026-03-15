@@ -167,7 +167,10 @@ struct UpdateVoiceStateData : Core::JsonUtils::JsonObject
     QJsonObject toJson() const
     {
         QJsonObject obj;
-        obj["guild_id"] = QString::number(guildId.get());
+        if (guildId.get().isValid())
+            obj["guild_id"] = QString::number(guildId.get());
+        else
+            obj["guild_id"] = QJsonValue::Null;
         if (channelId.isNull())
             obj["channel_id"] = QJsonValue::Null;
         else

@@ -107,8 +107,11 @@ void ChannelTreeView::contextMenuEvent(QContextMenuEvent *event)
         menu.addSeparator();
     }
 
-    if (isVoiceChannel) {
-        QAction *joinAction = menu.addAction(tr("Join Voice Channel"));
+    bool isDMChannel = (nodeType == ChannelNode::Type::DMChannel);
+
+    if (isVoiceChannel || isDMChannel) {
+        QString joinText = isDMChannel ? tr("Join Call") : tr("Join Voice Channel");
+        QAction *joinAction = menu.addAction(joinText);
         connect(joinAction, &QAction::triggered, this, [this, proxyIndex]() {
             emit joinVoiceChannelRequested(proxyIndex);
         });

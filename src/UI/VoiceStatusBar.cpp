@@ -122,7 +122,7 @@ void VoiceStatusBar::setChannelName(const QString &name)
     if (name.isEmpty())
         channelLabel->hide();
     else {
-        channelLabel->setText("#" + name);
+        channelLabel->setText(name);
         channelLabel->show();
     }
 }
