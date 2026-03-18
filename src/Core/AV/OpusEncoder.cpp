@@ -29,7 +29,7 @@ bool OpusEncoder::init(int sampleRate, int channels)
         return false;
     }
 
-    setBitrate(510000);
+    setBitrate(OPUS_BITRATE_MAX);
     setComplexity(10);
     setSignalType(OPUS_SIGNAL_MUSIC);
     setFec(true);
