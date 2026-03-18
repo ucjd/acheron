@@ -1,7 +1,7 @@
 #include "OpusEncoder.hpp"
 #include "IAudioBackend.hpp"
 
-#include "Core/Logging.hpp"g
+#include "Core/Logging.hpp"
 
 namespace Acheron {
 namespace Core {
