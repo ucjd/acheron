@@ -23,7 +23,7 @@ bool OpusEncoder::init(int sampleRate, int channels)
     frameChannels = channels;
 
     int error;
-    encoder = opus_encoder_create(sampleRate, channels, OPUS_APPLICATION_VOIP, &error);
+    encoder = opus_encoder_create(sampleRate, channels, OPUS_APPLICATION_AUDIO, &error);
     if (error != OPUS_OK || !encoder) {
         qCCritical(LogVoice) << "Failed to create Opus encoder:" << opus_strerror(error);
         return false;
