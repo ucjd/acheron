@@ -16,7 +16,7 @@ public:
     void setBitrate(int bitrate);
     void setComplexity(int complexity);
     void setSignalType(int signalType);
-    void setMaxBandwidth(int bandwidth);
+    void setBandwidth(int bandwidth);
     void setFec(bool enabled);
     void setDtx(bool enabled);
     void setPacketLossPercent(int percent);
