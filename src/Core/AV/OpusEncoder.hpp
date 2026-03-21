@@ -17,7 +17,6 @@ public:
     void setComplexity(int complexity);
     void setSignalType(int signalType);
     void setMaxBandwidth(int bandwidth);
-    void setLsbDepth(int depth);
     void setFec(bool enabled);
     void setDtx(bool enabled);
     void setPacketLossPercent(int percent);
