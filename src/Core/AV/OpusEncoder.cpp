@@ -24,7 +24,7 @@ bool OpusEncoder::init(int sampleRate, int channels)
     setBitrate(OPUS_BITRATE_MAX);
     setComplexity(10);
     setSignalType(OPUS_SIGNAL_MUSIC);
-    setMaxBandwidth(OPUS_BANDWIDTH_FULLBAND);
+    setBandwidth(OPUS_BANDWIDTH_FULLBAND);
     setVbr(true);
     setVbrConstraint(false);
     setFec(false);
@@ -70,10 +70,10 @@ void OpusEncoder::setSignalType(int signalType)
     if (encoder)
         opus_encoder_ctl(encoder, OPUS_SET_SIGNAL(signalType));
 }
-void OpusEncoder::setMaxBandwidth(int bandwidth)
+void OpusEncoder::setBandwidth(int bandwidth)
 {
     if (encoder)
-        opus_encoder_ctl(encoder, OPUS_SET_MAX_BANDWIDTH(bandwidth));
+        opus_encoder_ctl(encoder, OPUS_SET_BANDWIDTH(bandwidth));
 }
 void OpusEncoder::setFec(bool enabled)
 {
