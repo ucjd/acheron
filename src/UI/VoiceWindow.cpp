@@ -348,7 +348,7 @@ void VoiceWindow::setupUi()
     auto *inputLabel = new QLabel(tr("Input"), this);
     inputLabel->setFixedWidth(44);
     inputGainSlider = new QSlider(Qt::Horizontal, this);
-    inputGainSlider->setRange(0, 4000);
+    inputGainSlider->setRange(0, 1000);
     inputGainSlider->setValue(100);
     inputGainValue = new QLabel("100%", this);
     inputGainValue->setFixedWidth(36);
