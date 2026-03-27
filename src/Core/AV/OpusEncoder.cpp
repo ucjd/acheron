@@ -35,6 +35,7 @@ bool OpusEncoder::init(int sampleRate, int channels)
     setFec(true);
     setDtx(false);
     setPacketLossPercent(0);
+    setVbrConstraint(false);
     return true;
 }
 
@@ -101,6 +102,12 @@ void OpusEncoder::setPacketLossPercent(int percent)
 {
     if (encoder)
         opus_encoder_ctl(encoder, OPUS_SET_PACKET_LOSS_PERC(percent));
+}
+
+void OpusEncoder::setVbrConstraint(bool enabled)
+{
+    if (encoder)
+        opus_encoder_ctl(encoder, OPUS_SET_VBR_CONSTRAINT(enabled ? 1 : 0));
 }
 
 } // namespace AV
